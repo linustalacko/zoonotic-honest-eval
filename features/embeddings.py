@@ -94,8 +94,8 @@ def embed_virus(fasta_path: Path, model, alphabet, device) -> np.ndarray | None:
     repr_layer = model.num_layers
     vecs = []
     with torch.no_grad():
-        for i in range(0, len(proteins), 4):  # micro-batches
-            chunk = [p[:1022] for p in proteins[i : i + 4]]
+        for i in range(0, len(proteins), 16):  # micro-batches (bigger = better GPU use)
+            chunk = [p[:1022] for p in proteins[i : i + 16]]
             _, _, toks = bc([(f"p{j}", p) for j, p in enumerate(chunk)])
             toks = toks.to(device)
             out = model(toks, repr_layers=[repr_layer])["representations"][repr_layer]
@@ -112,25 +112,52 @@ def embed_virus(fasta_path: Path, model, alphabet, device) -> np.ndarray | None:
     return np.concatenate([v.mean(axis=0), v.max(axis=0)])
 
 
+def _rows_to_df(rows: dict[str, np.ndarray]) -> pd.DataFrame:
+    if not rows:
+        return pd.DataFrame()
+    dim = len(next(iter(rows.values())))
+    df = pd.DataFrame.from_dict(rows, orient="index", columns=[f"esm_{i}" for i in range(dim)])
+    df.index.name = "virus_taxhash"
+    return df
+
+
 def featurize_viruses(
     viruses: pd.DataFrame,
     model_name: str = DEFAULT_ESM_MODEL,
     *,
     cache_name: str | None = None,
     force: bool = False,
+    commit_every: int = 0,
+    commit_cb=None,
 ) -> pd.DataFrame:
-    """Build an ESM-2 embedding matrix for a virus table (cached)."""
+    """Build an ESM-2 embedding matrix for a virus table.
+
+    **Resumable**: writes a ``.partial`` checkpoint every ``commit_every`` viruses
+    (and calls ``commit_cb``, e.g. to commit a Modal Volume), so a preempted GPU
+    container resumes instead of re-embedding from scratch. Embedding 9k viruses
+    exceeds one A10 container's stable lifetime, so this is load-bearing.
+    """
     cache = FEATURES_CACHE / (cache_name or f"esm_{model_name}.parquet")
     if cache.exists() and not force:
         log.info("embeddings cached: %s", cache)
         return pd.read_parquet(cache)
 
-    model, alphabet, device = _load_esm(model_name)
-    log.info("embedding %d viruses with %s on %s", len(viruses), model_name, device)
-
+    partial = cache.with_suffix(".partial.parquet")
     rows: dict[str, np.ndarray] = {}
+    if partial.exists() and not force:
+        ex = pd.read_parquet(partial)
+        rows = {idx: ex.loc[idx].to_numpy() for idx in ex.index}
+        log.info("resuming ESM embedding from %d checkpointed viruses", len(rows))
+
+    model, alphabet, device = _load_esm(model_name)
+    log.info("embedding %d viruses with %s on %s (%d already done)",
+             len(viruses), model_name, device, len(rows))
+
+    FEATURES_CACHE.mkdir(parents=True, exist_ok=True)
     for i, row in enumerate(viruses.itertuples(index=False), 1):
-        if not isinstance(row.virus_name, str):  # NaN name -> no genome
+        if row.virus_taxhash in rows:  # resume: skip done
+            continue
+        if not isinstance(row.virus_name, str):
             continue
         gpath = genome_path(row.virus_name)
         if not gpath.exists() or gpath.stat().st_size == 0:
@@ -139,14 +166,16 @@ def featurize_viruses(
         if vec is not None:
             rows[row.virus_taxhash] = vec
         if i % 50 == 0:
-            log.info("  embedded %d/%d", i, len(viruses))
+            log.info("  embedded %d/%d (%d vecs)", i, len(viruses), len(rows))
+        if commit_every and i % commit_every == 0:
+            _rows_to_df(rows).to_parquet(partial)
+            if commit_cb:
+                commit_cb()
 
-    dim = len(next(iter(rows.values()))) if rows else 0
-    feats = pd.DataFrame.from_dict(
-        rows, orient="index", columns=[f"esm_{i}" for i in range(dim)]
-    )
-    feats.index.name = "virus_taxhash"
-    FEATURES_CACHE.mkdir(parents=True, exist_ok=True)
+    feats = _rows_to_df(rows)
     feats.to_parquet(cache)
-    log.info("embeddings: %d viruses x %d dims", len(feats), dim)
+    partial.unlink(missing_ok=True)
+    if commit_cb:
+        commit_cb()
+    log.info("embeddings: %d viruses x %d dims", len(feats), feats.shape[1])
     return feats
