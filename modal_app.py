@@ -53,6 +53,19 @@ image = (
 
 CPU_KW = dict(image=image, volumes={DATA_MOUNT: volume})
 
+# GPU image for the ESM-2 protein-embedding rung. torch + fair-esm; weights cached
+# to the Volume (TORCH_HOME) so retries don't re-download.
+gpu_image = (
+    modal.Image.debian_slim(python_version="3.11")
+    .pip_install(*DEPS, "torch>=2.2", "fair-esm>=2.0")
+    .env({
+        "ZOONOTIC_DATA_DIR": DATA_MOUNT,
+        "ZOONOTIC_RESULTS_DIR": f"{DATA_MOUNT}/results",
+        "TORCH_HOME": f"{DATA_MOUNT}/torch_cache",
+    })
+    .add_local_python_source("zoonotic", "features", "models", "data")
+)
+
 
 @app.function(timeout=1800, **CPU_KW)
 def prep() -> dict:
@@ -150,6 +163,40 @@ def train(rung: str = "all", cohort: str = "genome") -> dict:
     volume.commit()
     return {"cohort": cohort, "n_restrict": len(restrict),
             "rungs": list(metrics.keys()), "metrics": metrics, "analysis": analysis}
+
+
+@app.function(timeout=4 * 3600, gpu="a10g", image=gpu_image, volumes={DATA_MOUNT: volume})
+def train_esm(model_name: str = "esm2_t30_150M_UR50D") -> dict:
+    """Embed ORFs with ESM-2 (GPU), run the ESM rungs on the shared cohort, and
+    compute paired CIs vs composition + effort. The one untested rung: does a
+    protein language model shrink the family-holdout gap?"""
+    from zoonotic.logging_utils import setup_logging
+
+    setup_logging()
+    from features.composition import featurize_viruses as comp_feat
+    from features.embeddings import featurize_viruses as esm_feat
+    from models.dataset import load_labels
+    from models.evaluate import compare_rungs, gap_ci
+    from models.train import run_rung
+
+    labels = load_labels()
+    comp_idx = set(comp_feat(labels).index)              # warms composition cache
+    esm = esm_feat(labels, model_name=model_name)        # GPU embed + cache to Volume
+    restrict = comp_idx & set(esm.index)
+
+    metrics = {}
+    for r in ("esm_logreg", "esm_xgb"):
+        metrics[r] = run_rung(r, restrict_to=restrict, tag=r).to_dict("records")
+
+    analysis = {
+        "gap_esm_xgb": gap_ci("esm_xgb"),
+        "esm_xgb_vs_composition_xgb_family": compare_rungs("esm_xgb", "composition_xgb", "tax_family"),
+        "esm_xgb_vs_effort_only_family": compare_rungs("esm_xgb", "effort_only", "tax_family"),
+        "esm_xgb_vs_composition_xgb_genus": compare_rungs("esm_xgb", "composition_xgb", "tax_genus"),
+    }
+    volume.commit()
+    return {"model": model_name, "n_esm": int(len(esm)), "dim": int(esm.shape[1]),
+            "n_restrict": len(restrict), "metrics": metrics, "analysis": analysis}
 
 
 @app.function(timeout=2 * 3600, **CPU_KW)

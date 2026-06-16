@@ -87,13 +87,15 @@ def embed_virus(fasta_path: Path, model, alphabet, device) -> np.ndarray | None:
     vecs = []
     with torch.no_grad():
         for i in range(0, len(proteins), 4):  # micro-batches
-            batch = [(f"p{j}", p[:1022]) for j, p in enumerate(proteins[i : i + 4])]
-            _, _, toks = bc(batch)
+            chunk = [p[:1022] for p in proteins[i : i + 4]]
+            _, _, toks = bc([(f"p{j}", p) for j, p in enumerate(chunk)])
             toks = toks.to(device)
             out = model(toks, repr_layers=[repr_layer])["representations"][repr_layer]
-            # mean over residues (excluding BOS/EOS) then collect per-protein
-            for row in range(out.shape[0]):
-                vecs.append(out[row, 1:-1].mean(0).cpu().numpy())
+            # mean over each protein's TRUE residues only (1..L), excluding the
+            # BOS token and any right-padding from shorter proteins in the batch.
+            for row, prot in enumerate(chunk):
+                length = len(prot)
+                vecs.append(out[row, 1 : 1 + length].mean(0).cpu().numpy())
     return np.mean(vecs, axis=0) if vecs else None
 
 
@@ -115,6 +117,8 @@ def featurize_viruses(
 
     rows: dict[str, np.ndarray] = {}
     for i, row in enumerate(viruses.itertuples(index=False), 1):
+        if not isinstance(row.virus_name, str):  # NaN name -> no genome
+            continue
         gpath = genome_path(row.virus_name)
         if not gpath.exists() or gpath.stat().st_size == 0:
             continue

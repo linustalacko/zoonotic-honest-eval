@@ -43,6 +43,7 @@ RUNGS: dict[str, tuple[str, str]] = {
     "composition_logreg": ("composition", "logreg"),
     "composition_xgb": ("composition", "xgboost"),
     "esm_logreg": ("esm", "logreg"),
+    "esm_xgb": ("esm", "xgboost"),
 }
 # Rungs that need no genomes — runnable immediately.
 CONTROL_RUNGS = ("prior", "family_prior", "effort_only")
@@ -50,7 +51,7 @@ CONTROL_RUNGS = ("prior", "family_prior", "effort_only")
 # standard Modal image.
 GENOME_RUNGS = ("composition_logreg", "composition_xgb")
 # Need genomes + the optional [embeddings] deps (torch/fair-esm) + ideally a GPU.
-ESM_RUNGS = ("esm_logreg",)
+ESM_RUNGS = ("esm_logreg", "esm_xgb")
 
 
 def make_model(name: str):
