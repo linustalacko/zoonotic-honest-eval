@@ -200,6 +200,21 @@ def train_esm(model_name: str = "esm2_t30_150M_UR50D") -> dict:
 
 
 @app.function(timeout=2 * 3600, **CPU_KW)
+def hillclimb(specs: list) -> list:
+    """Evaluate a batch of (features, model, params) specs on the shared cohort;
+    return the leaderboard. Features are loaded once and reused across the batch."""
+    from zoonotic.logging_utils import setup_logging
+
+    setup_logging()
+    from features.composition import featurize_viruses
+    from models.dataset import load_labels
+    from models.hillclimb import run_specs
+
+    genome_idx = set(featurize_viruses(load_labels()).index)
+    return run_specs(specs, restrict=genome_idx)
+
+
+@app.function(timeout=2 * 3600, **CPU_KW)
 def diagnostics(rung: str = "composition_xgb") -> dict:
     """Leakage curve + hard-lineage probe + watchlist, from persisted OOF preds."""
     from zoonotic.logging_utils import setup_logging

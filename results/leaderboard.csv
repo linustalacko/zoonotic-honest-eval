@@ -1,0 +1,32 @@
+round,label,features,model,params,n,dims,fam_prauc,fam_roc,fam_lift,rand_roc
+r1,xgb_d2,composition,xgboost,"{""max_depth"": 2}",9197,101,0.1822,0.6771,2.05,0.8752
+r1,xgb_d3,composition,xgboost,"{""max_depth"": 3}",9197,101,0.1785,0.6588,1.37,0.8984
+r1,xgb_d4,composition,xgboost,"{""max_depth"": 4}",9197,101,0.1795,0.6596,1.71,0.9077
+r1,xgb_d6,composition,xgboost,"{""max_depth"": 6}",9197,101,0.177,0.6706,1.37,0.9145
+r1,xgb_d8,composition,xgboost,"{""max_depth"": 8}",9197,101,0.1774,0.6631,1.37,0.9138
+r1,xgb_d3_reg,composition,xgboost,"{""max_depth"": 3, ""reg_lambda"": 5.0, ""reg_alpha"": 1.0, ""min_child_weight"": 5}",9197,101,0.1785,0.6699,1.71,0.8975
+r1,xgb_d3_slow,composition,xgboost,"{""max_depth"": 3, ""learning_rate"": 0.03, ""n_estimators"": 800}",9197,101,0.1811,0.6663,1.71,0.9015
+r1,xgb_d4_sub,composition,xgboost,"{""max_depth"": 4, ""subsample"": 0.6, ""colsample_bytree"": 0.5}",9197,101,0.1759,0.667,1.88,0.91
+r1,xgb_d2_slow,composition,xgboost,"{""max_depth"": 2, ""n_estimators"": 1200, ""learning_rate"": 0.03}",9197,101,0.1759,0.6575,1.37,0.8902
+r1,histgb,composition,histgb,{},9197,101,0.1745,0.6499,2.22,0.9126
+r1,histgb_d3_l2,composition,histgb,"{""max_depth"": 3, ""l2_regularization"": 5.0}",9197,101,0.1844,0.6863,1.37,0.8947
+r1,random_forest,composition,random_forest,{},9197,101,0.1654,0.6232,1.37,0.9045
+r1,extra_trees,composition,extra_trees,{},9197,101,0.1472,0.571,1.37,0.8802
+r1,logreg_c0.1,composition,logreg,"{""C"": 0.1}",9197,101,0.1233,0.5566,0.0,0.7389
+r1,logreg_c1.0,composition,logreg,"{""C"": 1.0}",9197,101,0.119,0.5399,0.0,0.7425
+r1,logreg_c10.0,composition,logreg,"{""C"": 10.0}",9197,101,0.1184,0.5377,0.0,0.7458
+r1,mlp,composition,mlp,{},9197,101,0.1609,0.6205,1.88,0.8811
+r1,comp+effort_xgb,composition+effort,xgboost,"{""max_depth"": 4}",9197,104,0.7906,0.9327,8.53,0.9712
+r2_features,composition(ref),composition,xgboost,"{""max_depth"": 4}",9197,101,0.1771,0.6593,1.02,0.9099
+r2_features,kmer4,kmer4,xgboost,"{""max_depth"": 4}",9197,256,0.176,0.6805,2.05,0.9028
+r2_features,comp+kmer4,composition+kmer4,xgboost,"{""max_depth"": 4}",9197,357,0.1871,0.6986,1.37,0.9091
+r2_features,aa,aa,xgboost,"{""max_depth"": 4}",9197,20,0.1445,0.579,1.37,0.8682
+r2_features,comp+aa,composition+aa,xgboost,"{""max_depth"": 4}",9197,121,0.1788,0.6651,1.71,0.9102
+r2_features,codonpos,codonpos,xgboost,"{""max_depth"": 4}",9197,12,0.1517,0.6081,1.19,0.8255
+r2_features,comp+codonpos,composition+codonpos,xgboost,"{""max_depth"": 4}",9197,113,0.1804,0.661,1.37,0.9083
+r2_features,scalar,scalar,xgboost,"{""max_depth"": 4}",9197,7,0.1725,0.6463,0.51,0.8687
+r2_features,comp+scalar,composition+scalar,xgboost,"{""max_depth"": 4}",9197,108,0.1831,0.67,1.37,0.908
+r2_features,dipeptide,dipeptide,xgboost,"{""max_depth"": 4}",9197,400,0.1599,0.652,1.02,0.891
+r2_features,aa+dipeptide,aa+dipeptide,xgboost,"{""max_depth"": 4}",9197,420,0.1595,0.6465,1.88,0.889
+r2_features,comp+aa+codon+scalar,composition+aa+codonpos+scalar,xgboost,"{""max_depth"": 4}",9197,140,0.1837,0.6691,1.37,0.9104
+r2_features,all_genome,composition+kmer4+aa+codonpos+scalar,xgboost,"{""max_depth"": 4}",9197,396,0.1862,0.6958,1.54,0.9094
