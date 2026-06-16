@@ -165,6 +165,18 @@ def train(rung: str = "all", cohort: str = "genome") -> dict:
             "rungs": list(metrics.keys()), "metrics": metrics, "analysis": analysis}
 
 
+@app.function(gpu="a10g", image=gpu_image)
+def gpu_check() -> int:
+    try:
+        import torch
+        cuda = bool(torch.cuda.is_available())
+        dev = torch.cuda.get_device_name(0) if cuda else "none"
+        print(f"GPUCHECK cuda={cuda} torch={str(torch.__version__)} device={dev}", flush=True)
+    except Exception as e:  # noqa: BLE001
+        print(f"GPUCHECK ERROR {type(e).__name__}: {str(e)[:200]}", flush=True)
+    return 1
+
+
 @app.function(timeout=4 * 3600, gpu="a10g", retries=2, image=gpu_image, volumes={DATA_MOUNT: volume})
 def train_esm(model_name: str = "esm2_t30_150M_UR50D") -> dict:
     """Embed ORFs with ESM-2 (GPU), run the ESM rungs on the shared cohort, and
