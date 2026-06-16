@@ -1,0 +1,15 @@
+{
+  "n_viruses": 10804,
+  "n_positive": 1124,
+  "base_rate": 0.104,
+  "n_with_family": 9563,
+  "base_rate_family_known": 0.113,
+  "n_families": 102,
+  "n_genera": 597,
+  "n_mammal_associated": 7865,
+  "base_rate_mammal_assoc": 0.1429,
+  "n_with_taxid": 10186,
+  "n_with_year": 10800,
+  "n_with_accession": 10091,
+  "clover_agreement_on_positives": 0.2989
+}

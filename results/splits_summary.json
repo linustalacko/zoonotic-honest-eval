@@ -1,0 +1,26 @@
+{
+  "cohort_size": 9227,
+  "cohort_positives": 1080,
+  "n_folds": 5,
+  "temporal_cutoff": 2020,
+  "temporal_train_n": 4622,
+  "temporal_test_n": 4605,
+  "temporal_test_positives": 247,
+  "genus_subcohort_n": 6118,
+  "positives_per_random_fold": {
+    "0": 216,
+    "1": 216,
+    "2": 216,
+    "3": 216,
+    "4": 216
+  },
+  "positives_per_family_fold": {
+    "0": 167,
+    "1": 395,
+    "2": 181,
+    "3": 168,
+    "4": 169
+  },
+  "families_split_across_folds": 0,
+  "genera_split_across_folds": 0
+}

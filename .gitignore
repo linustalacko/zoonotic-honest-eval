@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Environment / secrets
+.env
+
+# Data: raw downloads and large processed artifacts are cached locally, not committed.
+# Small, reproducible derived tables (labels, splits, metrics) MAY be committed if useful.
+data/raw/
+data/processed/
+data/cache/
+data/features_cache/
+data/models_artifacts/
+*.fasta
+*.fa
+*.fna
+*.parquet
+*.sqlite
+
+# Model artifacts / embeddings (large, regenerable)
+*.pt
+*.npy
+*.npz
+
+# Results: keep tracked plots/tables but ignore scratch
+results/scratch/
+
+# Generated dashboard (regenerate with: python ui/build_dashboard.py)
+ui/dashboard.html
+
+# OS
+.DS_Store
+
+# scratch
+results/_*

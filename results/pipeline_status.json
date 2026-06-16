@@ -1,0 +1,12 @@
+{
+  "generated_note": "Live pipeline status; refreshed by build_dashboard.py runs.",
+  "runtime": "Modal (zoonotic-data Volume)",
+  "stages": [
+    {"key": "data",     "label": "Data ingest",   "detail": "VIRION + CLOVER + HP3 + ICTV", "state": "done"},
+    {"key": "labels",   "label": "Labels",         "detail": "human / non-human per virus",  "state": "done"},
+    {"key": "splits",   "label": "Splits",         "detail": "random / family / genus / temporal", "state": "done"},
+    {"key": "genomes",  "label": "Genomes",        "detail": "NCBI RefSeq + accession fallback", "state": "running", "done": 4047, "target": 9227},
+    {"key": "features", "label": "Features",       "detail": "composition (k-mer + dinuc bias)", "state": "pending"},
+    {"key": "models",   "label": "Models + eval",  "detail": "controls done; genome rungs pending", "state": "running"}
+  ]
+}
