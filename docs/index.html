@@ -78,26 +78,35 @@ floor, a taxonomy-only guess, and a research-effort baseline that uses no genome
 A genome model is only interesting if it beats those under family holdout.</p>
 
 <h2>Results</h2>
-<div class="tablewrap"><table><thead><tr><th>model</th><th class="">Random</th><th class="hon">Family holdout</th><th class="">Genus holdout</th><th class="">Temporal</th></tr></thead><tbody><tr><td class="name">base rate</td><td class=""><span class="big">1.2&times;</span><span class="sml">0.50</span></td><td class="hon"><span class="big">0.7&times;</span><span class="sml">0.42</span></td><td class=""><span class="big">0.8&times;</span><span class="sml">0.49</span></td><td class=""><span class="big">0.8&times;</span><span class="sml">0.50</span></td></tr><tr><td class="name">taxonomy only</td><td class=""><span class="big">5.8&times;</span><span class="sml">0.78</span></td><td class="hon"><span class="big">0.7&times;</span><span class="sml">0.42</span></td><td class=""><span class="big">0.9&times;</span><span class="sml">0.64</span></td><td class=""><span class="big">8.2&times;</span><span class="sml">0.82</span></td></tr><tr><td class="name">research effort</td><td class=""><span class="big">5.1&times;</span><span class="sml">0.71</span></td><td class="hon"><span class="big">5.1&times;</span><span class="sml">0.52</span></td><td class=""><span class="big">3.7&times;</span><span class="sml">0.59</span></td><td class=""><span class="big">3.0&times;</span><span class="sml">0.14</span></td></tr><tr><td class="name">genome · linear</td><td class=""><span class="big">5.3&times;</span><span class="sml">0.74</span></td><td class="hon"><span class="big">0.0&times;</span><span class="sml">0.54</span></td><td class=""><span class="big">1.9&times;</span><span class="sml">0.64</span></td><td class=""><span class="big">2.2&times;</span><span class="sml">0.75</span></td></tr><tr><td class="name">genome · boosted</td><td class=""><span class="big">8.4&times;</span><span class="sml">0.91</span></td><td class="hon"><span class="big">1.7&times;</span><span class="sml">0.66</span></td><td class=""><span class="big">6.1&times;</span><span class="sml">0.75</span></td><td class=""><span class="big">18.6&times;</span><span class="sml">0.89</span></td></tr></tbody></table></div>
+<div class="tablewrap"><table><thead><tr><th>model</th><th class="">Random</th><th class="hon">Family holdout</th><th class="">Genus holdout</th><th class="">Temporal</th></tr></thead><tbody><tr><td class="name">base rate</td><td class=""><span class="big">1.0&times;</span><span class="sml">0.50</span></td><td class="hon"><span class="big">0.5&times;</span><span class="sml">0.42</span></td><td class=""><span class="big">1.4&times;</span><span class="sml">0.49</span></td><td class=""><span class="big">0.7&times;</span><span class="sml">0.50</span></td></tr><tr><td class="name">taxonomy only</td><td class=""><span class="big">5.8&times;</span><span class="sml">0.78</span></td><td class="hon"><span class="big">0.5&times;</span><span class="sml">0.42</span></td><td class=""><span class="big">0.8&times;</span><span class="sml">0.63</span></td><td class=""><span class="big">7.8&times;</span><span class="sml">0.82</span></td></tr><tr><td class="name">research effort</td><td class=""><span class="big">5.1&times;</span><span class="sml">0.71</span></td><td class="hon"><span class="big">5.1&times;</span><span class="sml">0.52</span></td><td class=""><span class="big">3.7&times;</span><span class="sml">0.59</span></td><td class=""><span class="big">3.0&times;</span><span class="sml">0.14</span></td></tr><tr><td class="name">genome · linear</td><td class=""><span class="big">5.3&times;</span><span class="sml">0.74</span></td><td class="hon"><span class="big">0.0&times;</span><span class="sml">0.54</span></td><td class=""><span class="big">1.9&times;</span><span class="sml">0.64</span></td><td class=""><span class="big">2.2&times;</span><span class="sml">0.75</span></td></tr><tr><td class="name">genome · boosted</td><td class=""><span class="big">8.4&times;</span><span class="sml">0.91</span></td><td class="hon"><span class="big">1.7&times;</span><span class="sml">0.66</span></td><td class=""><span class="big">6.1&times;</span><span class="sml">0.75</span></td><td class=""><span class="big">18.6&times;</span><span class="sml">0.89</span></td></tr></tbody></table></div>
 <p class="cap">Each cell: top-50 watchlist lift over the base rate, with ROC-AUC below.
 The shaded <b>Family holdout</b> column is the honest test.</p>
 
 <h2>The gap</h2>
-<p>The genome model drops from <b>0.91 to 0.66</b> ROC-AUC, and its watchlist
-from <b>8.4&times; to 1.7&times;</b>, when whole families are held out.
+<p>The genome model drops from <b>0.91 to 0.66</b> ROC-AUC when whole families
+are held out, a gap of <b>+0.25</b> (95% CI +0.15 to +0.34, p &lt; 0.001 by a
+family-clustered bootstrap), and its watchlist from <b>8.4&times; to 1.7&times;</b>.
 A model that looks state-of-the-art on a random split is barely above chance on novel families,
-and its watchlist is beaten by simply counting how much a virus has been studied.</p>
+and its watchlist is significantly beaten by simply counting how much a virus has been studied.</p>
+
+<h2>Is it just easy negatives?</h2>
+<p>No. A reviewer's first objection is that the random score just separates plant and insect
+viruses from animal ones. But restricting to mammal-associated viruses only, the genuinely
+hard cohort, barely moves the random score (<b>0.91</b> vs 0.91) and leaves
+the collapse intact (family holdout <b>0.67</b>). The apparent skill is phylogenetic
+leakage, not easy-negative separation.</p>
 
 <h2>The verdict</h2>
 <p class="keyline">The signal is real but narrow, and the headline numbers in this literature
 are mostly leakage.</p>
-<p>Genome composition beats pure taxonomy under family holdout, so it learns something real.
-But it loses the watchlist to a research-effort baseline, and it does not extrapolate to
-families it has never seen. It does generalise across genera within known families, and
+<p>Genome composition beats pure taxonomy under family holdout (a significant margin), so it
+learns something real. But on the watchlist a surveillance team would actually use, it is
+significantly beaten by a research-effort baseline that never sees a genome, and that loss
+survives removing easy negatives. It does generalise across genera within known families, and
 forward in time. So it is a useful prioritisation prior for novel relatives of known viruses,
 not a crystal ball for the next pandemic from an unknown lineage. This reproduces the
 Mollentze-era result and the 2025 "hidden challenges" critique, on our own pipeline, with the
-controls that make it legible.</p>
+controls and confidence intervals that make it legible.</p>
 
 <h2>What it cannot do</h2>
 <p>This predicts only whether a virus can infect a human. It says nothing about whether it

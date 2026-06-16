@@ -106,25 +106,50 @@ def featurize_composition() -> dict:
 
 
 @app.function(timeout=2 * 3600, **CPU_KW)
-def train(rung: str = "controls") -> dict:
-    """Run ladder rung(s) across all splits on the Volume; write metrics_*.csv.
+def train(rung: str = "all", cohort: str = "genome") -> dict:
+    """Run ladder rung(s) across all splits on ONE shared cohort; persist preds +
+    metrics + family-clustered-bootstrap CIs (computed in-container, so no
+    volume-read lag).
 
-    rung in {controls, genomes, all, <single-rung-name>}. 'controls' needs no
-    genomes; genome rungs require featurize_composition to have run first.
+    rung   in {all, controls, genomes, esm, <single-rung>} (all = controls+genome)
+    cohort in {genome (with-genome set, consistent n), mammal (fair cohort)}
     """
     from zoonotic.logging_utils import setup_logging
 
     setup_logging()
+    from features.composition import featurize_viruses
+    from models.dataset import load_labels
+    from models.evaluate import compare_rungs, gap_ci
     from models.train import CONTROL_RUNGS, ESM_RUNGS, GENOME_RUNGS, run_rung
 
-    rungs = {"controls": CONTROL_RUNGS, "genomes": GENOME_RUNGS,
-             "esm": ESM_RUNGS}.get(rung, (rung,))
-    out = {}
+    labels = load_labels()
+    genome_idx = set(featurize_viruses(labels).index)  # also warms composition.parquet
+    groups = {"controls": CONTROL_RUNGS, "genomes": GENOME_RUNGS, "esm": ESM_RUNGS,
+              "all": CONTROL_RUNGS + GENOME_RUNGS}
+    rungs = groups.get(rung, (rung,))
+
+    if cohort == "mammal":
+        mam = set(labels.loc[labels["has_mammal_host"], "virus_taxhash"])
+        restrict, suffix = genome_idx & mam, "__mammal"
+    else:
+        restrict, suffix = genome_idx, ""
+
+    metrics = {}
     for r in rungs:
-        table = run_rung(r)
-        out[r] = table.to_dict("records")
+        table = run_rung(r, restrict_to=restrict, tag=f"{r}{suffix}")
+        metrics[f"{r}{suffix}"] = table.to_dict("records")
+
+    # headline confidence intervals, computed from the preds just written
+    xgb, eff = f"composition_xgb{suffix}", f"effort_only{suffix}"
+    analysis = {
+        "gap_composition_xgb": gap_ci(xgb),
+        "xgb_vs_effort_tax_family": compare_rungs(xgb, eff, "tax_family"),
+        "xgb_vs_effort_tax_genus": compare_rungs(xgb, eff, "tax_genus"),
+        "xgb_vs_family_prior_tax_family": compare_rungs(xgb, f"family_prior{suffix}", "tax_family"),
+    }
     volume.commit()
-    return out
+    return {"cohort": cohort, "n_restrict": len(restrict),
+            "rungs": list(metrics.keys()), "metrics": metrics, "analysis": analysis}
 
 
 @app.function(timeout=600, **CPU_KW)

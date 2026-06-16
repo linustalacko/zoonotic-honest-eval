@@ -108,24 +108,30 @@ def _get_features(name: str):
     raise ValueError(f"unknown feature set: {name!r}")
 
 
-def run_rung(rung: str, *, log_to_db: bool = True):
-    """Evaluate one ladder rung across all split schemes; write metrics_<rung>.csv."""
+def run_rung(rung: str, *, restrict_to: set | None = None, tag: str | None = None,
+             log_to_db: bool = True):
+    """Evaluate one ladder rung across all split schemes; write metrics_<tag>.csv.
+
+    ``restrict_to`` forces a shared cohort (e.g. with-genome set, or mammal-only);
+    ``tag`` overrides the output stem (e.g. ``composition_xgb__mammal``).
+    """
     from models.dataset import build_dataset
     from models.evaluate import run_matrix
 
     feat_set, model_name = RUNGS[rung]
+    tag = tag or rung
     feats = _get_features(feat_set)
-    ds = build_dataset(feats)
+    ds = build_dataset(feats, restrict_to=restrict_to)
     log.info("[%s] dataset: %d viruses x %d features, base rate %.3f",
-             rung, ds.n, ds.X.shape[1], ds.base_rate)
+             tag, ds.n, ds.X.shape[1], ds.base_rate)
 
     table = run_matrix(
         ds, lambda: make_model(model_name),
-        tag=rung, features=feat_set, model=model_name, seed=RANDOM_SEED, log_to_db=log_to_db,
+        tag=tag, features=feat_set, model=model_name, seed=RANDOM_SEED, log_to_db=log_to_db,
     )
-    out = RESULTS_DIR / f"metrics_{rung}.csv"
+    out = RESULTS_DIR / f"metrics_{tag}.csv"
     table.to_csv(out, index=False)
-    log.info("[%s] wrote %s", rung, out)
+    log.info("[%s] wrote %s", tag, out)
     return table
 
 

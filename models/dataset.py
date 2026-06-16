@@ -69,16 +69,20 @@ class Dataset:
             raise ValueError(f"unknown split scheme: {scheme}")
 
 
-def build_dataset(features: pd.DataFrame) -> Dataset:
+def build_dataset(features: pd.DataFrame, restrict_to: set | None = None) -> Dataset:
     """Join a feature matrix (indexed by virus_taxhash) to labels + splits.
 
-    Keeps only viruses present in *all three* (cohort ∩ has-features), so models
-    are trained and scored on a consistent set.
+    Keeps only viruses present in *all three* (cohort ∩ has-features). Pass
+    ``restrict_to`` (a set of virus_taxhash) to force every rung onto one shared
+    cohort — e.g. the with-genome set (so control and composition rungs have the
+    *same* n, hence are directly comparable), or the mammal-only fair cohort.
     """
     labels = load_labels().set_index("virus_taxhash")
     splits = load_splits().set_index("virus_taxhash")
 
     idx = features.index.intersection(splits.index)
+    if restrict_to is not None:
+        idx = idx.intersection(pd.Index(list(restrict_to)))
     X = features.loc[idx].copy()
     y = labels.loc[idx, "label"].astype(int)
     meta = splits.loc[idx].join(

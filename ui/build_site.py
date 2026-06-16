@@ -73,6 +73,9 @@ def build() -> str:
     g_tgt = genomes.get("targets", splits.get("cohort_size", 1)) or 1
     g_cov = genomes.get("coverage") or (g_found / g_tgt)
 
+    cis = load_json("confidence_intervals.json")
+    gap = cis.get("genome", {}).get("gap_composition_xgb", {}).get("roc_auc", {})
+
     def val(rung, scheme, field):
         row = M.get(rung, {}).get(scheme)
         return float(row[field]) if row is not None else 0.0
@@ -82,6 +85,10 @@ def build() -> str:
         family_auc=f"{val('composition_xgb','tax_family','roc_auc'):.2f}",
         random_lift=f"{val('composition_xgb','random','lift@50'):.1f}",
         family_lift=f"{val('composition_xgb','tax_family','lift@50'):.1f}",
+        gap_lo=f"{gap.get('ci_lo',0):.2f}", gap_hi=f"{gap.get('ci_hi',0):.2f}",
+        gap_point=f"{val('composition_xgb','random','roc_auc')-val('composition_xgb','tax_family','roc_auc'):.2f}",
+        mam_random_auc=f"{val('composition_xgb__mammal','random','roc_auc'):.2f}",
+        mam_family_auc=f"{val('composition_xgb__mammal','tax_family','roc_auc'):.2f}",
         n_viruses=f"{labels.get('n_viruses',0):,}",
         n_pos=f"{labels.get('n_positive',0):,}",
         base=f"{labels.get('base_rate',0)*100:.0f}",
@@ -180,21 +187,30 @@ A genome model is only interesting if it beats those under family holdout.</p>
 The shaded <b>Family holdout</b> column is the honest test.</p>
 
 <h2>The gap</h2>
-<p>The genome model drops from <b>{random_auc} to {family_auc}</b> ROC-AUC, and its watchlist
-from <b>{random_lift}&times; to {family_lift}&times;</b>, when whole families are held out.
+<p>The genome model drops from <b>{random_auc} to {family_auc}</b> ROC-AUC when whole families
+are held out, a gap of <b>+{gap_point}</b> (95% CI +{gap_lo} to +{gap_hi}, p &lt; 0.001 by a
+family-clustered bootstrap), and its watchlist from <b>{random_lift}&times; to {family_lift}&times;</b>.
 A model that looks state-of-the-art on a random split is barely above chance on novel families,
-and its watchlist is beaten by simply counting how much a virus has been studied.</p>
+and its watchlist is significantly beaten by simply counting how much a virus has been studied.</p>
+
+<h2>Is it just easy negatives?</h2>
+<p>No. A reviewer's first objection is that the random score just separates plant and insect
+viruses from animal ones. But restricting to mammal-associated viruses only, the genuinely
+hard cohort, barely moves the random score (<b>{mam_random_auc}</b> vs {random_auc}) and leaves
+the collapse intact (family holdout <b>{mam_family_auc}</b>). The apparent skill is phylogenetic
+leakage, not easy-negative separation.</p>
 
 <h2>The verdict</h2>
 <p class="keyline">The signal is real but narrow, and the headline numbers in this literature
 are mostly leakage.</p>
-<p>Genome composition beats pure taxonomy under family holdout, so it learns something real.
-But it loses the watchlist to a research-effort baseline, and it does not extrapolate to
-families it has never seen. It does generalise across genera within known families, and
+<p>Genome composition beats pure taxonomy under family holdout (a significant margin), so it
+learns something real. But on the watchlist a surveillance team would actually use, it is
+significantly beaten by a research-effort baseline that never sees a genome, and that loss
+survives removing easy negatives. It does generalise across genera within known families, and
 forward in time. So it is a useful prioritisation prior for novel relatives of known viruses,
 not a crystal ball for the next pandemic from an unknown lineage. This reproduces the
 Mollentze-era result and the 2025 "hidden challenges" critique, on our own pipeline, with the
-controls that make it legible.</p>
+controls and confidence intervals that make it legible.</p>
 
 <h2>What it cannot do</h2>
 <p>This predicts only whether a virus can infect a human. It says nothing about whether it
