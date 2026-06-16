@@ -18,6 +18,30 @@ from zoonotic.config import RANDOM_SEED
 
 
 def make_estimator(mtype: str, params: dict):
+    """Build an estimator. Special params: ``_pca`` (n_components) and ``_select``
+    (SelectKBest k) wrap the classifier in a scale→[select]→[pca]→clf pipeline."""
+    p = dict(params or {})
+    pca = p.pop("_pca", None)
+    select = p.pop("_select", None)
+    raw = _raw_estimator(mtype, p)
+    if mtype in ("logreg", "mlp") and not (pca or select):
+        return raw  # already a scaled pipeline
+    if not (pca or select) and mtype not in ("logreg", "mlp"):
+        return raw  # trees: no scaling/transform
+    from sklearn.pipeline import Pipeline
+    from sklearn.preprocessing import StandardScaler
+    steps = [("scale", StandardScaler())]
+    if select:
+        from sklearn.feature_selection import SelectKBest, f_classif
+        steps.append(("select", SelectKBest(f_classif, k=select)))
+    if pca:
+        from sklearn.decomposition import PCA
+        steps.append(("pca", PCA(n_components=pca, random_state=RANDOM_SEED)))
+    steps.append(("clf", _raw_estimator(mtype, p, bare=True)))
+    return Pipeline(steps)
+
+
+def _raw_estimator(mtype: str, params: dict, bare: bool = False):
     p = dict(params or {})
     if mtype == "xgboost":
         from xgboost import XGBClassifier
@@ -34,12 +58,15 @@ def make_estimator(mtype: str, params: dict):
         return HistGradientBoostingClassifier(**base)
     if mtype in ("logreg", "linear_svc"):
         from sklearn.linear_model import LogisticRegression
-        from sklearn.pipeline import Pipeline
-        from sklearn.preprocessing import StandardScaler
         base = dict(C=1.0, penalty="l2", solver="liblinear", max_iter=2000,
                     class_weight="balanced", random_state=RANDOM_SEED)
         base.update(p)
-        return Pipeline([("s", StandardScaler()), ("c", LogisticRegression(**base))])
+        clf = LogisticRegression(**base)
+        if bare:
+            return clf
+        from sklearn.pipeline import Pipeline
+        from sklearn.preprocessing import StandardScaler
+        return Pipeline([("s", StandardScaler()), ("c", clf)])
     if mtype == "random_forest":
         from sklearn.ensemble import RandomForestClassifier
         base = dict(n_estimators=600, max_depth=None, class_weight="balanced_subsample",
@@ -54,12 +81,15 @@ def make_estimator(mtype: str, params: dict):
         return ExtraTreesClassifier(**base)
     if mtype == "mlp":
         from sklearn.neural_network import MLPClassifier
-        from sklearn.pipeline import Pipeline
-        from sklearn.preprocessing import StandardScaler
         base = dict(hidden_layer_sizes=(128, 32), alpha=1e-3, max_iter=300,
                     early_stopping=True, random_state=RANDOM_SEED)
         base.update(p)
-        return Pipeline([("s", StandardScaler()), ("c", MLPClassifier(**base))])
+        clf = MLPClassifier(**base)
+        if bare:
+            return clf
+        from sklearn.pipeline import Pipeline
+        from sklearn.preprocessing import StandardScaler
+        return Pipeline([("s", StandardScaler()), ("c", clf)])
     raise ValueError(f"unknown model type {mtype!r}")
 
 

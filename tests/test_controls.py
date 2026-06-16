@@ -22,21 +22,23 @@ def _labels():
     })
 
 
-def test_effort_features_excludes_label_leaky_columns():
+def test_effort_features_are_label_independent_generalism():
     feats = effort_features(_labels())
     cols = set(feats.columns)
-    for banned in ("n_human_assoc", "has_mammal_host", "has_vertebrate_host", "label",
-                   "n_accessions", "clover_human"):
+    # must use ONLY host-breadth; no count that entangles the label, and no
+    # label-subtracted feature (those leaked — see docs/raising_the_ceiling.md).
+    for banned in ("n_human_assoc", "n_assoc", "log_assoc", "log_nonhuman_assoc",
+                   "log_nonhuman_hosts", "has_mammal_host", "has_vertebrate_host",
+                   "label", "n_accessions", "clover_human"):
         assert banned not in cols
-    assert cols == {"log_nonhuman_assoc", "log_nonhuman_hosts", "n_host_classes"}
+    assert cols == {"log_host_species", "n_host_classes"}
 
 
-def test_effort_uses_non_human_signal_only():
+def test_effort_uses_host_breadth_values():
     feats = effort_features(_labels())
-    # virus a: n_assoc 100 - n_human 90 = 10 non-human assoc
-    assert np.isclose(feats.loc["a", "log_nonhuman_assoc"], np.log1p(10))
-    # virus a is a positive (n_human>0) so one host (human) is removed: 5 - 1 = 4
-    assert np.isclose(feats.loc["a", "log_nonhuman_hosts"], np.log1p(4))
+    # virus a: 5 host species, 2 host classes — no label subtraction
+    assert np.isclose(feats.loc["a", "log_host_species"], np.log1p(5))
+    assert np.isclose(feats.loc["a", "n_host_classes"], 2.0)
 
 
 def test_group_rate_predicts_training_group_rate():

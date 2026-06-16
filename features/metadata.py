@@ -50,14 +50,18 @@ def effort_features(viruses: pd.DataFrame) -> pd.DataFrame:
       * ``n_host_classes``      — distinct host taxonomic classes (host breadth)
     """
     df = _by_taxhash(viruses)
-    label = (df["n_human_assoc"] > 0).astype(int)  # used only to *remove* the human host
 
-    nonhuman_assoc = (df["n_assoc"] - df["n_human_assoc"]).clip(lower=0)
-    nonhuman_hosts = (df["n_host_species"] - label).clip(lower=0)
-
+    # The least label-entangled non-genomic baseline: host-range BREADTH
+    # (generalism), which is also a genuine biological predictor of zoonosis
+    # (Olival 2017). We deliberately do NOT use association/sequence COUNTS:
+    #   * ``n_assoc`` includes the human detections, so it is partly the label;
+    #   * ``n_assoc - n_human_assoc`` collapses human-only viruses to 0 — a
+    #     near-deterministic tell a flexible model exploits (effort+xgb hit 0.80
+    #     family-PR via exactly this leak; see docs/raising_the_ceiling.md).
+    # Host counts include the human host (+1 for positives) — a mild, documented
+    # residual entanglement, far smaller than the count-based leaks.
     out = pd.DataFrame(index=df.index)
-    out["log_nonhuman_assoc"] = np.log1p(nonhuman_assoc)
-    out["log_nonhuman_hosts"] = np.log1p(nonhuman_hosts)
+    out["log_host_species"] = np.log1p(df["n_host_species"])
     out["n_host_classes"] = df["n_host_classes"].astype(float)
     out.index.name = "virus_taxhash"
     return out

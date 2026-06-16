@@ -30,3 +30,25 @@ r2_features,dipeptide,dipeptide,xgboost,"{""max_depth"": 4}",9197,400,0.1599,0.6
 r2_features,aa+dipeptide,aa+dipeptide,xgboost,"{""max_depth"": 4}",9197,420,0.1595,0.6465,1.88,0.889
 r2_features,comp+aa+codon+scalar,composition+aa+codonpos+scalar,xgboost,"{""max_depth"": 4}",9197,140,0.1837,0.6691,1.37,0.9104
 r2_features,all_genome,composition+kmer4+aa+codonpos+scalar,xgboost,"{""max_depth"": 4}",9197,396,0.1862,0.6958,1.54,0.9094
+r3_tune_ck,ck_xgb_d3,composition+kmer4,xgboost,"{""max_depth"": 3}",9197,357,0.1864,0.6996,0.85,0.8999
+r3_tune_ck,ck_xgb_d5,composition+kmer4,xgboost,"{""max_depth"": 5}",9197,357,0.1917,0.7014,2.22,0.9122
+r3_tune_ck,ck_xgb_reg,composition+kmer4,xgboost,"{""max_depth"": 3, ""reg_lambda"": 5.0, ""reg_alpha"": 1.0, ""min_child_weight"": 5}",9197,357,0.1911,0.705,1.37,0.8995
+r3_tune_ck,ck_xgb_slow,composition+kmer4,xgboost,"{""max_depth"": 3, ""learning_rate"": 0.03, ""n_estimators"": 900}",9197,357,0.1872,0.6951,1.54,0.905
+r3_tune_ck,ck_xgb_sub,composition+kmer4,xgboost,"{""max_depth"": 4, ""subsample"": 0.6, ""colsample_bytree"": 0.4}",9197,357,0.1773,0.6681,2.22,0.9071
+r3_tune_ck,ck+scalar,composition+kmer4+scalar,xgboost,"{""max_depth"": 4}",9197,364,0.1824,0.6904,1.37,0.9086
+r3_tune_ck,ck+codon,composition+kmer4+codonpos,xgboost,"{""max_depth"": 4}",9197,369,0.1889,0.6958,1.19,0.909
+r3_tune_ck,ck_histgb,composition+kmer4,histgb,"{""max_depth"": 3, ""l2_regularization"": 5.0}",9197,357,0.1887,0.6997,1.37,0.8995
+r3_tune_ck,ck_logreg_c01,composition+kmer4,logreg,"{""C"": 0.1}",9197,357,0.1379,0.5917,0.0,0.7738
+r3_tune_ck,full_xgb_d3reg,composition+kmer4+aa+codonpos+scalar,xgboost,"{""max_depth"": 3, ""reg_lambda"": 5.0, ""min_child_weight"": 5}",9197,396,0.1862,0.6997,1.37,0.9018
+r3_tune_ck,ck_mlp,composition+kmer4,mlp,"{""hidden_layer_sizes"": [256, 64], ""alpha"": 0.01}",9197,357,0.1576,0.6086,1.02,0.8839
+r4_pca_reg,ck_xgb_d5,composition+kmer4,xgboost,"{""max_depth"": 5}",9197,357,0.1917,0.7014,2.22,0.9122
+r4_pca_reg,ck_pca50_logreg,composition+kmer4,logreg,"{""C"": 1.0, ""_pca"": 50}",9197,357,0.1587,0.6257,0.0,0.7431
+r4_pca_reg,ck_pca100_logreg,composition+kmer4,logreg,"{""C"": 1.0, ""_pca"": 100}",9197,357,0.142,0.6055,0.0,0.7602
+r4_pca_reg,ck_pca50_xgb,composition+kmer4,xgboost,"{""max_depth"": 4, ""_pca"": 50}",9197,357,0.1796,0.6698,1.19,0.8929
+r4_pca_reg,ck_select100_xgb,composition+kmer4,xgboost,"{""max_depth"": 4, ""_select"": 100}",9197,357,0.1706,0.6582,1.37,0.8922
+r4_pca_reg,ck_select80_logreg,composition+kmer4,logreg,"{""C"": 1.0, ""_select"": 80}",9197,357,0.1493,0.6149,0.0,0.735
+r4_pca_reg,ck_strongreg,composition+kmer4,xgboost,"{""max_depth"": 2, ""reg_lambda"": 10.0, ""min_child_weight"": 10, ""subsample"": 0.5, ""colsample_bytree"": 0.5}",9197,357,0.1977,0.7175,1.88,0.88
+r4_pca_reg,ckad,composition+kmer4+aa+dipeptide,xgboost,"{""max_depth"": 4}",9197,777,0.1785,0.6982,1.19,0.9078
+r4_pca_reg,ckacs_reg,composition+kmer4+aa+codonpos+scalar,xgboost,"{""max_depth"": 3, ""reg_lambda"": 5.0, ""min_child_weight"": 5}",9197,396,0.1862,0.6997,1.37,0.9018
+r4_pca_reg,ck_histgb_d4,composition+kmer4,histgb,"{""max_depth"": 4, ""l2_regularization"": 2.0}",9197,357,0.1915,0.6985,2.22,0.9068
+r4_pca_reg,ck_et,composition+kmer4,extra_trees,"{""max_depth"": 4}",9197,357,0.1865,0.6822,2.39,0.7954

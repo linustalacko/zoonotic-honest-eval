@@ -172,6 +172,37 @@ themselves human-infecting. The probe also surfaced a **label-noise case**: the 
 virus appears once as positive and once as negative ("nipah henipavirus") — a
 concrete instance of the absence-of-evidence problem in §2.
 
+## Correction (auto-research round): the non-genomic control was confounded
+
+A later automated research + hill-climb pass **caught a leak in our own
+`effort_only` control** and corrects the headline. Its
+`nonhuman_hosts = n_host_species − label` feature collapsed human-only viruses to
+exactly 0 — a near-deterministic tell a flexible model exploits (`effort+xgboost`
+hit **0.80** family-PR through it). More broadly, *any* VIRION-count baseline
+entangles the label (association counts include the human detections). Rebuilt as
+the **least-entangled** non-genomic baseline — **host generalism** (breadth of
+known host range; also a real biological zoonosis predictor, Olival 2017):
+
+| under family holdout | PR-AUC | ROC-AUC | lift@50 |
+|---|---|---|---|
+| host generalism (clean baseline) | **0.30** | 0.63 | 5.8× |
+| `composition_xgb` (published) | 0.18 | 0.66 | 1.0× |
+| best hill-climbed genome (comp+kmer4, strong-reg) | 0.20 | 0.72 | 1.9× |
+
+- `composition_xgb` is **significantly below** clean generalism (ΔPR −0.13, CI [−0.23, −0.06]).
+- the **hill-climbed best is NOT** (ΔPR −0.09, CI [−0.22, +0.02], **n.s.**) — i.e. *on par*.
+
+**Revised verdict:** the earlier "research effort *crushes* the genome" was partly a
+confounded control. The honest statement: **a simple host-generalism feature is as
+good as (modestly better than) whole-genome composition for predicting human
+infectivity under family holdout** — both at a low ceiling (~0.2–0.3 PR-AUC). The
+genome adds little beyond "how broad is this virus's host range," and the hill-climb
+(richer k-mers + strong regularization, 60+ configs) only brings the genome *up to
+parity* with that baseline, never past it. The phylogenetic-leakage ceiling stands.
+See [`docs/raising_the_ceiling.md`](docs/raising_the_ceiling.md) for the research
+behind why no representation we have access to (incl. ESM, which encodes phylogeny)
+is expected to clear it cleanly.
+
 ## Verdict (v0, composition)
 
 **The signal is real but narrow, and the headline numbers in this literature are
