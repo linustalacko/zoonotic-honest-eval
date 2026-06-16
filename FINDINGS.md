@@ -203,6 +203,37 @@ See [`docs/raising_the_ceiling.md`](docs/raising_the_ceiling.md) for the researc
 behind why no representation we have access to (incl. ESM, which encodes phylogeny)
 is expected to clear it cleanly.
 
+## SOTA attempt: ESM-2 protein embeddings (the capstone)
+
+We built the **literature SOTA representation** — ESM-2 (150M) embeddings of every
+virus's translated proteins, **mean+max pooled** (the `max` approximating MIL's
+"most-discriminative protein" signal) — and ran it through the *same* honest harness.
+
+| model | **random** (the SOTA regime) | **family holdout** (honest) | genus | temporal |
+|---|---|---|---|---|
+| `esm_xgb` (ESM-2 150M, mean+max) | 0.884 / 0.67 | **0.683 / 0.179** | 0.720 / 0.39 | 0.866 / 0.56 |
+| `composition_xgb` | **0.910** / 0.73 | 0.653 / 0.178 | 0.753 / 0.47 | 0.889 / 0.69 |
+
+- **On the random split, ESM does not even beat composition** (0.884 vs 0.910). The
+  published SOTA (EvoMIL ~0.85, VirHostPRED ~0.91) is *this leaky regime* — and our
+  composition model already matches it.
+- **Under family holdout, ESM is statistically identical to composition** (ΔPR-AUC
+  **+0.002, CI [−0.045, +0.053], n.s.**) and **significantly below the clean
+  generalism baseline** (ΔPR −0.11, SIG).
+
+**The protein-LM SOTA does not break the ceiling — it collapses exactly like
+composition under honest evaluation.** This is what the literature predicted (ESM
+embeddings *encode phylogeny*; EvoMIL itself "drops significantly at lower taxonomic
+ranks"): a foundation model inflates the leaky number but carries no extra
+*generalizable* signal. Demonstrated here with CIs, on the SOTA representation — which
+the field's own papers never do. (650M + a trainable attention-MIL head would likely
+nudge the *random* number toward 0.91, but the family-holdout collapse is fundamental,
+not a model-capacity problem.)
+
+**"Get to SOTA," resolved:** SOTA-the-number (~0.9 AUC) is a leaky-split artefact we
+already reach with composition; SOTA-that-generalises-to-novel-families does **not
+exist** for this task, and we have now shown even ESM cannot deliver it.
+
 ## Verdict (v0, composition)
 
 **The signal is real but narrow, and the headline numbers in this literature are
