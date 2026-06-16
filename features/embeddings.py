@@ -26,7 +26,7 @@ from zoonotic.ncbi import genome_path
 
 log = logging.getLogger("zoonotic.features.embeddings")
 
-DEFAULT_ESM_MODEL = "esm2_t30_150M_UR50D"  # 150M params; good CPU/MPS tradeoff
+DEFAULT_ESM_MODEL = "esm2_t30_150M_UR50D"  # 150M first (fast); 650M is the upgrade
 MIN_PROTEIN_AA = 30
 MAX_PROTEINS_PER_VIRUS = 30  # cap pooling cost for large/segmented genomes
 
@@ -96,7 +96,12 @@ def embed_virus(fasta_path: Path, model, alphabet, device) -> np.ndarray | None:
             for row, prot in enumerate(chunk):
                 length = len(prot)
                 vecs.append(out[row, 1 : 1 + length].mean(0).cpu().numpy())
-    return np.mean(vecs, axis=0) if vecs else None
+    if not vecs:
+        return None
+    # mean + max pooling across proteins — max captures the most-discriminative
+    # protein (the MIL intuition) without a trainable attention. Doubles the dim.
+    v = np.stack(vecs)
+    return np.concatenate([v.mean(axis=0), v.max(axis=0)])
 
 
 def featurize_viruses(

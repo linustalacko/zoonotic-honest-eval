@@ -181,7 +181,8 @@ def train_esm(model_name: str = "esm2_t30_150M_UR50D") -> dict:
 
     labels = load_labels()
     comp_idx = set(comp_feat(labels).index)              # warms composition cache
-    esm = esm_feat(labels, model_name=model_name)        # GPU embed + cache to Volume
+    esm = esm_feat(labels, model_name=model_name,        # GPU embed (mean+max) + cache
+                   cache_name=f"esm_{model_name}_meanmax.parquet")
     restrict = comp_idx & set(esm.index)
 
     metrics = {}
