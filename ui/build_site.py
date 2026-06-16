@@ -64,10 +64,53 @@ def matrix_html(M: dict) -> str:
     return f"<table><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table>"
 
 
+def leakage_svg(diag: dict) -> str:
+    """Monochrome AUC-vs-distance line chart (multiples of 4)."""
+    bins = diag.get("leakage_curve", {}).get("bins", [])
+    pts = [(i, b["auc"]) for i, b in enumerate(bins) if b.get("auc")]
+    if len(pts) < 2:
+        return ""
+    W, H, padl, padr, padt, padb = 640, 224, 48, 16, 16, 48
+    pw, ph = W - padl - padr, H - padt - padb
+    n = len(bins)
+
+    def X(i):
+        return padl + (i + 0.5) / n * pw
+
+    def Y(a):
+        return padt + (1 - (a - 0.5) / 0.5) * ph
+
+    grid = ""
+    for a in (0.5, 0.75, 1.0):
+        yy = Y(a)
+        grid += (f'<line x1="{padl}" y1="{yy:.0f}" x2="{W-padr}" y2="{yy:.0f}" stroke="#e4e4e4"/>'
+                 f'<text x="{padl-8}" y="{yy+4:.0f}" text-anchor="end" font-size="12" fill="#666">{a:.2f}</text>')
+    poly = " ".join(f"{X(i):.0f},{Y(a):.0f}" for i, a in pts)
+    dots = "".join(f'<circle cx="{X(i):.0f}" cy="{Y(a):.0f}" r="4" fill="#000"/>' for i, a in pts)
+    labels = (f'<text x="{padl}" y="{H-16}" font-size="12" fill="#666">near</text>'
+              f'<text x="{W-padr}" y="{H-16}" text-anchor="end" font-size="12" fill="#666">far</text>'
+              f'<text x="{W/2:.0f}" y="{H-16}" text-anchor="middle" font-size="12" fill="#666">distance to nearest trained relative</text>'
+              f'<text x="8" y="20" font-size="12" fill="#666">AUC</text>')
+    return (f'<svg viewBox="0 0 {W} {H}" width="100%" role="img" aria-label="AUC versus distance to nearest training virus">'
+            f'<rect width="{W}" height="{H}" fill="#fff"/>{grid}'
+            f'<polyline points="{poly}" fill="none" stroke="#000" stroke-width="2"/>{dots}{labels}</svg>')
+
+
+def _ord(n: int) -> str:
+    suf = "th" if 10 <= n % 100 <= 20 else {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+    return f"{n}{suf}"
+
+
+def _lineage_pct(diag: dict, key: str) -> str:
+    ex = diag.get("hard_lineage_family_holdout", {}).get(key, {}).get("examples", [])
+    return _ord(round(ex[0]["percentile"] * 100)) if ex else "—"
+
+
 def build() -> str:
     M = load_metrics()
     labels = load_json("labels_summary.json")
     splits = load_json("splits_summary.json")
+    diag = load_json("diagnostics.json")
     genomes = load_json("genomes_summary.json")
     g_found = genomes.get("found", 0)
     g_tgt = genomes.get("targets", splits.get("cohort_size", 1)) or 1
@@ -89,6 +132,13 @@ def build() -> str:
         gap_point=f"{val('composition_xgb','random','roc_auc')-val('composition_xgb','tax_family','roc_auc'):.2f}",
         mam_random_auc=f"{val('composition_xgb__mammal','random','roc_auc'):.2f}",
         mam_family_auc=f"{val('composition_xgb__mammal','tax_family','roc_auc'):.2f}",
+        leakage_svg=leakage_svg(diag),
+        med_random=f"{diag.get('leakage_curve',{}).get('median_dist_by_scheme',{}).get('random',0):.2f}",
+        med_family=f"{diag.get('leakage_curve',{}).get('median_dist_by_scheme',{}).get('tax_family',0):.2f}",
+        wl_prec=f"{int(round(diag.get('watchlist_family_holdout',{}).get('precision_at_k',0)*50))}",
+        sars_pct=_lineage_pct(diag, "sars_related"),
+        flu_pct=_lineage_pct(diag, "influenza_a"),
+        ebola_pct=_lineage_pct(diag, "ebola"),
         n_viruses=f"{labels.get('n_viruses',0):,}",
         n_pos=f"{labels.get('n_positive',0):,}",
         base=f"{labels.get('base_rate',0)*100:.0f}",
@@ -199,6 +249,22 @@ viruses from animal ones. But restricting to mammal-associated viruses only, the
 hard cohort, barely moves the random score (<b>{mam_random_auc}</b> vs {random_auc}) and leaves
 the collapse intact (family holdout <b>{mam_family_auc}</b>). The apparent skill is phylogenetic
 leakage, not easy-negative separation.</p>
+
+<h2>How the leakage works</h2>
+<p>Accuracy depends almost entirely on whether a close relative is already in the training
+set. Binning every test virus by its distance to the nearest training virus, AUC falls
+steeply as that distance grows, and family-holdout viruses sit about twice as far from a
+trained relative as random-split ones (median {med_family} vs {med_random}). The skill is
+proximity, not biology.</p>
+{leakage_svg}
+
+<h2>Would it catch the famous ones?</h2>
+<p>Under family holdout, the model ranks SARS-related coronaviruses in the {sars_pct}
+percentile and influenza A in the {flu_pct} — neither makes a top-50 watchlist — though it
+does flag Ebola ({ebola_pct}). Of the actual top-50 family-holdout watchlist, only
+{wl_prec} of 50 are real human-infecting viruses; the rest are animal hantaviruses and
+paramyxoviruses that compositionally resemble high-risk families. This is the 2025 "hidden
+challenges" critique, reproduced.</p>
 
 <h2>The verdict</h2>
 <p class="keyline">The signal is real but narrow, and the headline numbers in this literature

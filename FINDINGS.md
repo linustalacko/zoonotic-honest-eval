@@ -151,6 +151,27 @@ unseen families. This reproduces the Mollentze-era result (combined AUC ~0.77, n
 family-stratified) and the 2025 "Hidden challenges" critique, on our pipeline, with
 controls + CIs that make it legible.
 
+### Diagnostics — the leakage, made visible (`results/diagnostics.json`)
+
+**Leakage curve.** Binning every test virus by cosine distance to its nearest
+*training* virus, AUC falls from **0.92** (closest bin) through 0.75, 0.66, 0.63 as
+distance grows; family-holdout viruses sit at ~2× the distance of random-split ones
+(median **0.21 vs 0.09**). The model's accuracy *is* proximity to a known relative.
+
+**Hard-lineage probe (family holdout).** Would a watchlist have surfaced the
+lineages that matter? Under family holdout the model ranks **SARS-related
+coronaviruses at the 90th percentile** (score 0.43) and **influenza A at the 81st**
+(0.26) — *neither makes a top-50 watchlist* — while it *does* flag **Ebola (99th)**.
+This is exactly the 2025 "Hidden challenges" lineage-specific failure (SARS-CoV-2,
+H5/flu missed), reproduced on our pipeline.
+
+**Watchlist contents (family holdout).** Of the actual top-50, only **10 are
+human-infecting (precision@50 = 0.20)**; the rest are animal hantaviruses and
+paramyxoviruses whose *composition* resembles high-risk families but which are not
+themselves human-infecting. The probe also surfaced a **label-noise case**: the same
+virus appears once as positive and once as negative ("nipah henipavirus") — a
+concrete instance of the absence-of-evidence problem in §2.
+
 ## Verdict (v0, composition)
 
 **The signal is real but narrow, and the headline numbers in this literature are

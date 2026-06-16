@@ -152,6 +152,37 @@ def train(rung: str = "all", cohort: str = "genome") -> dict:
             "rungs": list(metrics.keys()), "metrics": metrics, "analysis": analysis}
 
 
+@app.function(timeout=2 * 3600, **CPU_KW)
+def diagnostics(rung: str = "composition_xgb") -> dict:
+    """Leakage curve + hard-lineage probe + watchlist, from persisted OOF preds."""
+    from zoonotic.logging_utils import setup_logging
+
+    setup_logging()
+    from features.composition import featurize_viruses
+    from models import diagnostics as dg
+    from models.dataset import build_dataset, load_labels
+    from models.evaluate import load_preds
+
+    labels = load_labels()
+    feats = featurize_viruses(labels)
+    ds = build_dataset(feats, restrict_to=set(feats.index))
+    preds = {s: load_preds(rung, s) for s in ("random", "tax_family")}
+
+    out: dict = {"leakage_curve": dg.leakage_curve(ds, preds)}
+    pf = load_preds(rung, "tax_family")
+    if pf is not None:
+        out["watchlist_family_holdout"] = dg.watchlist(pf, labels, 50)
+        out["hard_lineage_family_holdout"] = dg.hard_lineage_probe(pf, labels, {
+            "sars_related": "respiratory syndrome.related coronavirus|sarbecovirus|sars",
+            "mers": "middle east respiratory|merbecovirus",
+            "influenza_a": "influenza a", "ebola": "ebola", "nipah": "nipah",
+            "lyssavirus_rabies": "lyssavirus|rabies"})
+    pr = load_preds(rung, "random")
+    if pr is not None:
+        out["watchlist_random"] = dg.watchlist(pr, labels, 50)
+    return out
+
+
 @app.function(timeout=600, **CPU_KW)
 def coverage() -> dict:
     """Report genome coverage currently on the Volume."""
