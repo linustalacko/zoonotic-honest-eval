@@ -165,7 +165,7 @@ def train(rung: str = "all", cohort: str = "genome") -> dict:
             "rungs": list(metrics.keys()), "metrics": metrics, "analysis": analysis}
 
 
-@app.function(timeout=4 * 3600, gpu="a10g", image=gpu_image, volumes={DATA_MOUNT: volume})
+@app.function(timeout=4 * 3600, gpu="a10g", retries=2, image=gpu_image, volumes={DATA_MOUNT: volume})
 def train_esm(model_name: str = "esm2_t30_150M_UR50D") -> dict:
     """Embed ORFs with ESM-2 (GPU), run the ESM rungs on the shared cohort, and
     compute paired CIs vs composition + effort. The one untested rung: does a

@@ -70,7 +70,15 @@ def _load_esm(model_name: str):
 
     model, alphabet = getattr(esm_mod.pretrained, model_name)()
     model.eval()
-    device = "mps" if torch.backends.mps.is_available() else "cpu"
+    # CUDA first (Modal GPU), then Apple MPS (local), else CPU. The earlier run
+    # silently fell to CPU on a GPU box because this only checked MPS — ~450
+    # viruses/hour instead of minutes.
+    if torch.cuda.is_available():
+        device = "cuda"
+    elif torch.backends.mps.is_available():
+        device = "mps"
+    else:
+        device = "cpu"
     model = model.to(device)
     return model, alphabet, device
 
