@@ -177,8 +177,8 @@ def gpu_check() -> int:
     return 1
 
 
-@app.function(timeout=4 * 3600, gpu="a10g", retries=2, image=gpu_image, volumes={DATA_MOUNT: volume})
-def train_esm(model_name: str = "esm2_t30_150M_UR50D") -> dict:
+@app.function(timeout=20 * 3600, gpu="a10g", retries=2, image=gpu_image, volumes={DATA_MOUNT: volume})
+def train_esm(model_name: str = "esm2_t30_150M_UR50D", max_proteins: int = 30) -> dict:
     """Embed ORFs with ESM-2 (GPU), run the ESM rungs on the shared cohort, and
     compute paired CIs vs composition + effort. The one untested rung: does a
     protein language model shrink the family-holdout gap?"""
@@ -195,7 +195,7 @@ def train_esm(model_name: str = "esm2_t30_150M_UR50D") -> dict:
     comp_idx = set(comp_feat(labels).index)              # warms composition cache
     esm = esm_feat(labels, model_name=model_name,        # GPU embed (mean+max), resumable
                    cache_name=f"esm_{model_name}_meanmax.parquet",
-                   commit_every=200, commit_cb=volume.commit)
+                   commit_every=200, commit_cb=volume.commit, max_proteins=max_proteins)
     restrict = comp_idx & set(esm.index)
 
     metrics = {}
@@ -211,6 +211,41 @@ def train_esm(model_name: str = "esm2_t30_150M_UR50D") -> dict:
     volume.commit()
     return {"model": model_name, "n_esm": int(len(esm)), "dim": int(esm.shape[1]),
             "n_restrict": len(restrict), "metrics": metrics, "analysis": analysis}
+
+
+@app.function(timeout=20 * 3600, gpu="a10g", retries=2, image=gpu_image, volumes={DATA_MOUNT: volume})
+def embed_esm(model_name: str = "esm2_t12_35M_UR50D", max_proteins: int = 30) -> dict:
+    """Embed-only for small ESM-2 models on A10G (the scaling-ladder low/mid rungs)."""
+    from zoonotic.logging_utils import setup_logging
+
+    setup_logging()
+    from features.embeddings import featurize_viruses as esm_feat
+    from models.dataset import load_labels
+
+    cache = f"esm_{model_name}_meanmax.parquet"
+    esm = esm_feat(load_labels(), model_name=model_name, cache_name=cache,
+                   commit_every=200, commit_cb=volume.commit, max_proteins=max_proteins)
+    volume.commit()
+    return {"model": model_name, "n": int(len(esm)), "dim": int(esm.shape[1]), "cache": cache}
+
+
+@app.function(timeout=20 * 3600, gpu="a100-80gb", retries=2, image=gpu_image, volumes={DATA_MOUNT: volume})
+def embed_esm_big(model_name: str = "esm2_t48_15B_UR50D", max_proteins: int = 8) -> dict:
+    """Embed-only for the big ESM-2 models (3B/15B) on A100-80GB, fp16, fewer
+    proteins per virus for tractability. Resumable. The eval is run locally on the
+    pulled matrix (reliable), so this just produces + commits the embedding."""
+    from zoonotic.logging_utils import setup_logging
+
+    setup_logging()
+    from features.embeddings import featurize_viruses as esm_feat
+    from models.dataset import load_labels
+
+    cache = f"esm_{model_name}_top{max_proteins}_meanmax.parquet"
+    esm = esm_feat(load_labels(), model_name=model_name, cache_name=cache,
+                   commit_every=100, commit_cb=volume.commit, max_proteins=max_proteins)
+    volume.commit()
+    return {"model": model_name, "max_proteins": max_proteins,
+            "n": int(len(esm)), "dim": int(esm.shape[1]), "cache": cache}
 
 
 @app.function(timeout=2 * 3600, **CPU_KW)

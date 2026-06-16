@@ -31,7 +31,8 @@ MIN_PROTEIN_AA = 30
 MAX_PROTEINS_PER_VIRUS = 30  # cap pooling cost for large/segmented genomes
 
 
-def translate_orfs(fasta_path: Path, min_aa: int = MIN_PROTEIN_AA) -> list[str]:
+def translate_orfs(fasta_path: Path, min_aa: int = MIN_PROTEIN_AA,
+                   max_proteins: int = MAX_PROTEINS_PER_VIRUS) -> list[str]:
     """Extract candidate protein sequences by 6-frame translation.
 
     Deliberately simple (no gene calling): translate all six frames, split on
@@ -54,7 +55,7 @@ def translate_orfs(fasta_path: Path, min_aa: int = MIN_PROTEIN_AA) -> list[str]:
             proteins.extend(p for p in aa.split("*") if len(p) >= min_aa)
     # longest first; cap to bound embedding cost
     proteins.sort(key=len, reverse=True)
-    return proteins[:MAX_PROTEINS_PER_VIRUS]
+    return proteins[:max_proteins]
 
 
 def _load_esm(model_name: str):
@@ -80,14 +81,17 @@ def _load_esm(model_name: str):
     else:
         device = "cpu"
     model = model.to(device)
+    if device == "cuda":
+        model = model.half()  # fp16 — halves memory (15B fits on A100-80GB) and faster
     return model, alphabet, device
 
 
-def embed_virus(fasta_path: Path, model, alphabet, device) -> np.ndarray | None:
-    """Mean-pooled ESM-2 embedding across a virus's translated proteins."""
+def embed_virus(fasta_path: Path, model, alphabet, device,
+                max_proteins: int = MAX_PROTEINS_PER_VIRUS) -> np.ndarray | None:
+    """Mean+max-pooled ESM-2 embedding across a virus's translated proteins."""
     import torch
 
-    proteins = translate_orfs(fasta_path)
+    proteins = translate_orfs(fasta_path, max_proteins=max_proteins)
     if not proteins:
         return None
     bc = alphabet.get_batch_converter()
@@ -103,7 +107,7 @@ def embed_virus(fasta_path: Path, model, alphabet, device) -> np.ndarray | None:
             # BOS token and any right-padding from shorter proteins in the batch.
             for row, prot in enumerate(chunk):
                 length = len(prot)
-                vecs.append(out[row, 1 : 1 + length].mean(0).cpu().numpy())
+                vecs.append(out[row, 1 : 1 + length].mean(0).float().cpu().numpy())
     if not vecs:
         return None
     # mean + max pooling across proteins — max captures the most-discriminative
@@ -129,6 +133,7 @@ def featurize_viruses(
     force: bool = False,
     commit_every: int = 0,
     commit_cb=None,
+    max_proteins: int = MAX_PROTEINS_PER_VIRUS,
 ) -> pd.DataFrame:
     """Build an ESM-2 embedding matrix for a virus table.
 
@@ -162,7 +167,7 @@ def featurize_viruses(
         gpath = genome_path(row.virus_name)
         if not gpath.exists() or gpath.stat().st_size == 0:
             continue
-        vec = embed_virus(gpath, model, alphabet, device)
+        vec = embed_virus(gpath, model, alphabet, device, max_proteins=max_proteins)
         if vec is not None:
             rows[row.virus_taxhash] = vec
         if i % 50 == 0:
