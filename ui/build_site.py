@@ -68,6 +68,10 @@ def build() -> str:
     M = load_metrics()
     labels = load_json("labels_summary.json")
     splits = load_json("splits_summary.json")
+    genomes = load_json("genomes_summary.json")
+    g_found = genomes.get("found", 0)
+    g_tgt = genomes.get("targets", splits.get("cohort_size", 1)) or 1
+    g_cov = genomes.get("coverage") or (g_found / g_tgt)
 
     def val(rung, scheme, field):
         row = M.get(rung, {}).get(scheme)
@@ -84,6 +88,8 @@ def build() -> str:
         cohort=f"{splits.get('cohort_size',0):,}",
         n_fam=labels.get("n_families", 0),
         n_gen=labels.get("n_genera", 0),
+        genomes_found=f"{g_found:,}",
+        genomes_cov=f"{g_cov*100:.1f}",
         matrix=matrix_html(M),
         gen=datetime.now().strftime("%B %Y"),
     )
@@ -156,7 +162,7 @@ virus. The whole point is to measure the gap once that leakage is removed.</p>
 <li><span class="k">Viruses (VIRION)</span><span class="v">{n_viruses}</span></li>
 <li><span class="k">Infect humans</span><span class="v">{n_pos} ({base}%)</span></li>
 <li><span class="k">Modelable cohort</span><span class="v">{cohort}</span></li>
-<li><span class="k">Genomes fetched</span><span class="v">9,197 (99.7%)</span></li>
+<li><span class="k">Genomes fetched</span><span class="v">{genomes_found} ({genomes_cov}%)</span></li>
 <li><span class="k">Families / genera</span><span class="v">{n_fam} / {n_gen}</span></li>
 </ul>
 

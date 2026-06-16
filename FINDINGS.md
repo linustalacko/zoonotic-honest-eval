@@ -34,11 +34,15 @@ between the random split and the taxonomic-family holdout.**
 
 1. **Absence of evidence ≠ evidence of absence.** A "negative" may be merely
    understudied. This is the dominant label-noise source.
-2. **Easy negatives.** Plant/insect viruses with no plausible human route are
-   trivial negatives that inflate AUC. We record `has_mammal_host` /
-   `has_vertebrate_host`; a fair-comparison ablation should restrict negatives to
-   mammal- or vertebrate-associated viruses (base rate among mammal-associated
-   viruses is **14.3%**, vs 10.4% overall).
+2. **Easy negatives are *non-mammal*, not "plant/insect".** VIRION is
+   vertebrate-host-focused, so only **4.1% of cohort negatives are
+   non-vertebrate** — the intuition that "half the cohort is plant/insect
+   viruses" is wrong (measured, not assumed). The defensible easy-negative slice
+   is **non-mammal** viruses (**28.7%** of negatives). We record `has_mammal_host`;
+   the fair-comparison ablation restricts the cohort to mammal-associated viruses
+   (**6,890 viruses, 1,080 positive, 15.7% base rate, 82 families**). Crucially,
+   this does **not** rescue the family-holdout collapse — that is phylogenetic
+   leakage, not a negative-set artifact (see the fair-cohort result below).
 3. **CLOVER agreement on positives is ~30%** — not a contradiction but a coverage
    gap: CLOVER is the older, smaller mammal-focused reconciliation; VIRION
    subsumes far more GenBank-derived associations.

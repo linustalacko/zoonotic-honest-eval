@@ -1,7 +1,9 @@
 {
-  "targets": 5,
-  "found": 5,
-  "missing": 0,
-  "fasta_files_on_disk": 5,
-  "scope": "cohort"
+  "targets": 9227,
+  "found": 9197,
+  "missing": 30,
+  "errored": 0,
+  "coverage": 0.9967,
+  "scope": "cohort",
+  "note": "RefSeq-preferred per-species fetch with VIRION-accession fallback; 30 species had no fetchable genome (large/complex genomes, e.g. herpes/poxviridae, over-represented among misses)."
 }
