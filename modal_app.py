@@ -248,6 +248,77 @@ def embed_esm_big(model_name: str = "esm2_t48_15B_UR50D", max_proteins: int = 8)
             "n": int(len(esm)), "dim": int(esm.shape[1]), "cache": cache}
 
 
+# --- Sharded embedding -------------------------------------------------------
+# Embedding is embarrassingly parallel over viruses. The 15B model is ~13 h on a
+# single A100 for the full cohort; splitting the virus list across N GPUs cuts
+# that to ~13/N h. Each shard embeds a strided slice (round-robin keeps families
+# balanced across shards) into its own resumable cache, then `merge_shards`
+# concatenates them into the unified ``esm_<model>_top<k>_meanmax.parquet`` that
+# the local eval already expects. n_shards=1 writes the unified file directly.
+
+def _embed_shard_impl(model_name: str, max_proteins: int, shard: int, n_shards: int) -> dict:
+    from zoonotic.logging_utils import setup_logging
+
+    setup_logging()
+    from features.embeddings import featurize_viruses as esm_feat
+    from models.dataset import load_labels
+
+    labels = load_labels()
+    if n_shards > 1:
+        sub = labels.iloc[shard::n_shards].copy()  # strided: balanced families per shard
+        cache = f"esm_{model_name}_top{max_proteins}_meanmax_shard{shard}of{n_shards}.parquet"
+        commit_every = 50
+    else:
+        sub = labels
+        cache = f"esm_{model_name}_top{max_proteins}_meanmax.parquet"
+        commit_every = 100
+    esm = esm_feat(sub, model_name=model_name, cache_name=cache, force=False,
+                   commit_every=commit_every, commit_cb=volume.commit, max_proteins=max_proteins)
+    volume.commit()
+    return {"model": model_name, "max_proteins": max_proteins, "shard": shard,
+            "n_shards": n_shards, "n": int(len(esm)), "dim": int(esm.shape[1]), "cache": cache}
+
+
+@app.function(timeout=20 * 3600, gpu="a10g", retries=2, image=gpu_image, volumes={DATA_MOUNT: volume})
+def embed_shard_a10g(model_name: str = "esm2_t12_35M_UR50D", max_proteins: int = 8,
+                     shard: int = 0, n_shards: int = 1) -> dict:
+    """One embedding shard on A10G (small/mid models)."""
+    return _embed_shard_impl(model_name, max_proteins, shard, n_shards)
+
+
+@app.function(timeout=20 * 3600, gpu="a100-80gb", retries=2, image=gpu_image, volumes={DATA_MOUNT: volume})
+def embed_shard_a100(model_name: str = "esm2_t48_15B_UR50D", max_proteins: int = 8,
+                     shard: int = 0, n_shards: int = 1) -> dict:
+    """One embedding shard on A100-80GB (big models, fp16)."""
+    return _embed_shard_impl(model_name, max_proteins, shard, n_shards)
+
+
+@app.function(timeout=2 * 3600, **CPU_KW)
+def merge_shards(model_name: str, max_proteins: int, n_shards: int) -> dict:
+    """Concatenate finished shard parquets into the unified embedding matrix."""
+    import pandas as pd
+
+    from zoonotic.config import FEATURES_CACHE
+    volume.reload()
+    parts, missing = [], []
+    for s in range(n_shards):
+        p = FEATURES_CACHE / f"esm_{model_name}_top{max_proteins}_meanmax_shard{s}of{n_shards}.parquet"
+        if p.exists():
+            parts.append(pd.read_parquet(p))
+        else:
+            missing.append(s)
+    if not parts:
+        return {"model": model_name, "n": 0, "missing_shards": missing}
+    full = pd.concat(parts)
+    full = full[~full.index.duplicated(keep="first")]
+    out = FEATURES_CACHE / f"esm_{model_name}_top{max_proteins}_meanmax.parquet"
+    full.to_parquet(out)
+    volume.commit()
+    return {"model": model_name, "max_proteins": max_proteins, "n": int(len(full)),
+            "dim": int(full.shape[1]), "n_shards": n_shards, "missing_shards": missing,
+            "out": out.name}
+
+
 @app.function(timeout=2 * 3600, **CPU_KW)
 def hillclimb(specs: list) -> list:
     """Evaluate a batch of (features, model, params) specs on the shared cohort;

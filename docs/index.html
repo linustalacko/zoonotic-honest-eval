@@ -5,7 +5,7 @@
 <meta name="description" content="An honest evaluation of whether viral genome models predict human-infection potential, or just memorise taxonomy.">
 <style>
 /* every value here is a multiple of 4 */
-body{background:#fff;color:#000;margin:0;padding:32px;font-size:16px;line-height:24px;
+body{background:#fff;color:#000;margin:0;padding:64px 32px 40px;font-size:16px;line-height:24px;
 font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
 .wrap{max-width:720px;margin:0 auto}
 h1{font-size:32px;line-height:40px;margin:0 0 8px;letter-spacing:-0.4px}
@@ -38,15 +38,26 @@ td.name{color:#666}
 <body><div class="wrap">
 
 <h1>Does genome-based zoonotic prediction generalise?</h1>
-<p class="sub">An honest evaluation of whether a virus's genome predicts its potential
-to infect humans, or whether the model just memorises which families we've already seen.</p>
+<p class="sub">An honest evaluation of whether a virus's genome predicts its potential to infect
+humans. The surprise: at small scale the model just memorises families &mdash; but a large enough
+protein language model recovers real, leakage-proof signal.</p>
 
 <div class="headline">
 <span class="num">0.91</span><span class="arrow">&rarr;</span><span class="num">0.66</span>
 </div>
-<p class="cap">Best genome model (boosted composition), ROC-AUC: random split &rarr; novel-family
-holdout. The watchlist signal collapses harder, 8.4&times; &rarr; 1.7&times;.
-Most of the apparent skill was phylogenetic leakage.</p>
+<p class="cap">A simple genome model (boosted composition), ROC-AUC: random split &rarr; novel-family
+holdout. The watchlist signal collapses harder, 8.4&times; &rarr; 1.0&times;.
+At this scale, most of the apparent skill is phylogenetic leakage &mdash; the model recognises
+relatives, not biology.</p>
+
+<div class="headline">
+<span class="num">0.62</span><span class="arrow">&rarr;</span><span class="num">0.76</span>
+</div>
+<p class="cap">But scale recovers it. Honest (novel-family) ROC-AUC as the protein language model
+grows from 35M to 15B parameters &mdash; a real, leakage-proof rise. By 15B the genome significantly
+beats composition and closes the gap to a one-line non-genomic baseline that beats every smaller
+model. It is a statistical tie, not a win &mdash; the baseline still leads the top-50 watchlist
+&mdash; but &ldquo;scale doesn&rsquo;t help honest prediction&rdquo; turned out to be false.</p>
 
 <h2>The task</h2>
 <p>Given a viral genome, predict whether it can infect humans. This is a real, published
@@ -66,7 +77,7 @@ virus. The whole point is to measure the gap once that leakage is removed.</p>
 <li><span class="k">Infect humans</span><span class="v">1,124 (10%)</span></li>
 <li><span class="k">Modelable cohort</span><span class="v">9,227</span></li>
 <li><span class="k">Genomes fetched</span><span class="v">9,197 (99.7%)</span></li>
-<li><span class="k">Families / genera</span><span class="v">102 / 597</span></li>
+<li><span class="k">Families / genera</span><span class="v">102 / 588</span></li>
 </ul>
 
 <h2>The test</h2>
@@ -78,14 +89,14 @@ floor, a taxonomy-only guess, and a research-effort baseline that uses no genome
 A genome model is only interesting if it beats those under family holdout.</p>
 
 <h2>Results</h2>
-<div class="tablewrap"><table><thead><tr><th>model</th><th class="">Random</th><th class="hon">Family holdout</th><th class="">Genus holdout</th><th class="">Temporal</th></tr></thead><tbody><tr><td class="name">base rate</td><td class=""><span class="big">1.0&times;</span><span class="sml">0.50</span></td><td class="hon"><span class="big">0.5&times;</span><span class="sml">0.42</span></td><td class=""><span class="big">1.4&times;</span><span class="sml">0.49</span></td><td class=""><span class="big">0.7&times;</span><span class="sml">0.50</span></td></tr><tr><td class="name">taxonomy only</td><td class=""><span class="big">5.8&times;</span><span class="sml">0.78</span></td><td class="hon"><span class="big">0.5&times;</span><span class="sml">0.42</span></td><td class=""><span class="big">0.8&times;</span><span class="sml">0.63</span></td><td class=""><span class="big">7.8&times;</span><span class="sml">0.82</span></td></tr><tr><td class="name">research effort</td><td class=""><span class="big">5.1&times;</span><span class="sml">0.71</span></td><td class="hon"><span class="big">5.1&times;</span><span class="sml">0.52</span></td><td class=""><span class="big">3.7&times;</span><span class="sml">0.59</span></td><td class=""><span class="big">3.0&times;</span><span class="sml">0.14</span></td></tr><tr><td class="name">genome · linear</td><td class=""><span class="big">5.3&times;</span><span class="sml">0.74</span></td><td class="hon"><span class="big">0.0&times;</span><span class="sml">0.54</span></td><td class=""><span class="big">1.9&times;</span><span class="sml">0.64</span></td><td class=""><span class="big">2.2&times;</span><span class="sml">0.75</span></td></tr><tr><td class="name">genome · boosted</td><td class=""><span class="big">8.4&times;</span><span class="sml">0.91</span></td><td class="hon"><span class="big">1.7&times;</span><span class="sml">0.66</span></td><td class=""><span class="big">6.1&times;</span><span class="sml">0.75</span></td><td class=""><span class="big">18.6&times;</span><span class="sml">0.89</span></td></tr></tbody></table></div>
+<div class="tablewrap"><table><thead><tr><th>model</th><th class="">Random</th><th class="hon">Family holdout</th><th class="">Genus holdout</th><th class="">Temporal</th></tr></thead><tbody><tr><td class="name">base rate</td><td class=""><span class="big">1.2&times;</span><span class="sml">0.50</span></td><td class="hon"><span class="big">1.0&times;</span><span class="sml">0.42</span></td><td class=""><span class="big">1.1&times;</span><span class="sml">0.49</span></td><td class=""><span class="big">0.7&times;</span><span class="sml">0.50</span></td></tr><tr><td class="name">taxonomy only</td><td class=""><span class="big">6.1&times;</span><span class="sml">0.78</span></td><td class="hon"><span class="big">1.0&times;</span><span class="sml">0.42</span></td><td class=""><span class="big">0.9&times;</span><span class="sml">0.63</span></td><td class=""><span class="big">8.2&times;</span><span class="sml">0.82</span></td></tr><tr><td class="name">research effort</td><td class=""><span class="big">6.1&times;</span><span class="sml">0.70</span></td><td class="hon"><span class="big">5.8&times;</span><span class="sml">0.63</span></td><td class=""><span class="big">4.3&times;</span><span class="sml">0.67</span></td><td class=""><span class="big">3.0&times;</span><span class="sml">0.56</span></td></tr><tr><td class="name">genome · linear</td><td class=""><span class="big">5.3&times;</span><span class="sml">0.74</span></td><td class="hon"><span class="big">0.0&times;</span><span class="sml">0.54</span></td><td class=""><span class="big">1.9&times;</span><span class="sml">0.64</span></td><td class=""><span class="big">2.2&times;</span><span class="sml">0.75</span></td></tr><tr><td class="name">genome · boosted</td><td class=""><span class="big">8.4&times;</span><span class="sml">0.91</span></td><td class="hon"><span class="big">1.0&times;</span><span class="sml">0.66</span></td><td class=""><span class="big">6.2&times;</span><span class="sml">0.75</span></td><td class=""><span class="big">18.6&times;</span><span class="sml">0.89</span></td></tr></tbody></table></div>
 <p class="cap">Each cell: top-50 watchlist lift over the base rate, with ROC-AUC below.
 The shaded <b>Family holdout</b> column is the honest test.</p>
 
 <h2>The gap</h2>
 <p>The genome model drops from <b>0.91 to 0.66</b> ROC-AUC when whole families
-are held out, a gap of <b>+0.25</b> (95% CI +0.15 to +0.34, p &lt; 0.001 by a
-family-clustered bootstrap), and its watchlist from <b>8.4&times; to 1.7&times;</b>.
+are held out, a gap of <b>+0.25</b> (95% CI +0.16 to +0.34, p &lt; 0.001 by a
+family-clustered bootstrap), and its watchlist from <b>8.4&times; to 1.0&times;</b>.
 A model that looks state-of-the-art on a random split is barely above chance on novel families,
 and its watchlist is significantly beaten by simply counting how much a virus has been studied.</p>
 
@@ -100,29 +111,45 @@ leakage, not easy-negative separation.</p>
 <p>Accuracy depends almost entirely on whether a close relative is already in the training
 set. Binning every test virus by its distance to the nearest training virus, AUC falls
 steeply as that distance grows, and family-holdout viruses sit about twice as far from a
-trained relative as random-split ones (median 0.21 vs 0.09). The skill is
+trained relative as random-split ones (median 0.00 vs 0.00). The skill is
 proximity, not biology.</p>
-<svg viewBox="0 0 640 224" width="100%" role="img" aria-label="AUC versus distance to nearest training virus"><rect width="640" height="224" fill="#fff"/><line x1="48" y1="176" x2="624" y2="176" stroke="#e4e4e4"/><text x="40" y="180" text-anchor="end" font-size="12" fill="#666">0.50</text><line x1="48" y1="96" x2="624" y2="96" stroke="#e4e4e4"/><text x="40" y="100" text-anchor="end" font-size="12" fill="#666">0.75</text><line x1="48" y1="16" x2="624" y2="16" stroke="#e4e4e4"/><text x="40" y="20" text-anchor="end" font-size="12" fill="#666">1.00</text><polyline points="96,43 192,95 288,126 384,133 480,115 576,90" fill="none" stroke="#000" stroke-width="2"/><circle cx="96" cy="43" r="4" fill="#000"/><circle cx="192" cy="95" r="4" fill="#000"/><circle cx="288" cy="126" r="4" fill="#000"/><circle cx="384" cy="133" r="4" fill="#000"/><circle cx="480" cy="115" r="4" fill="#000"/><circle cx="576" cy="90" r="4" fill="#000"/><text x="48" y="208" font-size="12" fill="#666">near</text><text x="624" y="208" text-anchor="end" font-size="12" fill="#666">far</text><text x="320" y="208" text-anchor="middle" font-size="12" fill="#666">distance to nearest trained relative</text><text x="8" y="20" font-size="12" fill="#666">AUC</text></svg>
+
 
 <h2>Would it catch the famous ones?</h2>
-<p>Under family holdout, the model ranks SARS-related coronaviruses in the 90th
-percentile and influenza A in the 81st — neither makes a top-50 watchlist — though it
-does flag Ebola (99th). Of the actual top-50 family-holdout watchlist, only
-10 of 50 are real human-infecting viruses; the rest are animal hantaviruses and
+<p>Under family holdout, the model ranks SARS-related coronaviruses in the —
+percentile and influenza A in the — — neither makes a top-50 watchlist — though it
+does flag Ebola (—). Of the actual top-50 family-holdout watchlist, only
+0 of 50 are real human-infecting viruses; the rest are animal hantaviruses and
 paramyxoviruses that compositionally resemble high-risk families. This is the 2025 "hidden
 challenges" critique, reproduced.</p>
 
+<h2>Scale recovers the signal</h2>
+<p>The collapse above is for simple composition and a small protein model. The obvious question
+is whether a bigger model helps. We ran the same honest test across ESM-2 protein language models
+from 35 million to 15 billion parameters, holding everything else fixed. The honest score rises
+the whole way &mdash; and this cannot be leakage, because held-out families have no relatives to
+memorise. By 15B the genome significantly beats composition and closes the gap to the one-line
+host-range baseline that beat every smaller model. It is a tie, not a win: the baseline still
+leads the top-50 watchlist, and absolute performance is still modest. But &ldquo;scale
+doesn&rsquo;t help honest prediction&rdquo; &mdash; the field&rsquo;s assumption, and our own
+&mdash; turned out to be false.</p>
+<svg viewBox="0 0 640 224" width="100%" role="img" aria-label="Honest ROC-AUC rises with protein model size while the leaky score stays flat"><rect width="640" height="224" fill="#fff"/><line x1="48" y1="176" x2="624" y2="176" stroke="#e4e4e4"/><text x="40" y="180" text-anchor="end" font-size="12" fill="#666">0.50</text><line x1="48" y1="96" x2="624" y2="96" stroke="#e4e4e4"/><text x="40" y="100" text-anchor="end" font-size="12" fill="#666">0.75</text><line x1="48" y1="16" x2="624" y2="16" stroke="#e4e4e4"/><text x="40" y="20" text-anchor="end" font-size="12" fill="#666">1.00</text><polyline points="96,53 216,54 336,48 456,47 576,42" fill="none" stroke="#999" stroke-width="2"/><text x="576" y="36" text-anchor="end" font-size="12" fill="#999">random (leaky)</text><line x1="96" y1="134" x2="576" y2="134" stroke="#999" stroke-width="1" stroke-dasharray="4 4"/><text x="100" y="148" font-size="12" fill="#666">one-line baseline</text><polyline points="96,136 216,129 336,124 456,109 576,94" fill="none" stroke="#000" stroke-width="2"/><circle cx="96" cy="136" r="4" fill="#000"/><circle cx="216" cy="129" r="4" fill="#000"/><circle cx="336" cy="124" r="4" fill="#000"/><circle cx="456" cy="109" r="4" fill="#000"/><circle cx="576" cy="94" r="4" fill="#000"/><text x="576" y="86" text-anchor="end" font-size="12" fill="#000">family holdout (honest)</text><text x="96" y="208" text-anchor="middle" font-size="12" fill="#666">35M</text><text x="216" y="208" text-anchor="middle" font-size="12" fill="#666">150M</text><text x="336" y="208" text-anchor="middle" font-size="12" fill="#666">650M</text><text x="456" y="208" text-anchor="middle" font-size="12" fill="#666">3B</text><text x="576" y="208" text-anchor="middle" font-size="12" fill="#666">15B</text></svg>
+<p class="cap">Honest (novel-family) ROC-AUC vs ESM-2 size. The leaky score stays pinned near
+0.90; the honest score climbs from the floor to meet the non-genomic baseline (dashed) by 15B.</p>
+
 <h2>The verdict</h2>
-<p class="keyline">The signal is real but narrow, and the headline numbers in this literature
-are mostly leakage.</p>
-<p>Genome composition beats pure taxonomy under family holdout (a significant margin), so it
-learns something real. But on the watchlist a surveillance team would actually use, it is
-significantly beaten by a research-effort baseline that never sees a genome, and that loss
-survives removing easy negatives. It does generalise across genera within known families, and
-forward in time. So it is a useful prioritisation prior for novel relatives of known viruses,
-not a crystal ball for the next pandemic from an unknown lineage. This reproduces the
-Mollentze-era result and the 2025 "hidden challenges" critique, on our own pipeline, with the
-controls and confidence intervals that make it legible.</p>
+<p class="keyline">Most of the headline accuracy is leakage &mdash; but scale recovers real,
+leakage-free signal, and the honest ceiling is not fixed.</p>
+<p>At the scales the field has used, genome models mostly memorise families, and a one-line
+host-range feature beats them on the honest test. But scaling the protein language model to 15
+billion parameters recovers genuine signal that smaller models throw away: the honest score
+nearly doubles in precision, the model significantly beats composition, and it closes the gap to
+the trivial baseline to a statistical tie. Two honest limits remain. It ties rather than beats
+that baseline, and a determined further effort &mdash; fusing the genome with host-range and
+ecological signals &mdash; looks likely to add only a little more (to roughly 0.78 ROC), because a
+real part of spillover is ecological (who is exposed to what), which no genome model can read at
+any size. The realistic goal is the best leakage-free model, used alongside surveillance at the
+animal&ndash;human interface &mdash; not a crystal ball from sequence alone.</p>
 
 <h2>What it cannot do</h2>
 <p>This predicts only whether a virus can infect a human. It says nothing about whether it
@@ -130,9 +157,9 @@ spreads between humans, or whether it is deadly or harmless. Rabies and the comm
 both positives here. Those are separate, harder problems with far sparser data.</p>
 
 <div class="foot">
-v0, exploratory. Composition features only; the protein-embedding model is pending. Open data
-only (VIRION, CLOVER, HP3, ICTV, NCBI RefSeq); no GISAID. Built to learn whether the signal is
-real, not to ship a product. Code and full findings:
+v0, exploratory. Composition features plus a frozen ESM-2 protein-language-model scaling ladder
+(35M&ndash;15B). Open data only (VIRION, CLOVER, HP3, ICTV, NCBI RefSeq); no GISAID. Built to
+learn whether the signal is real, not to ship a product. Code and full findings:
 <a href="https://github.com/linustalacko/zoonotic-honest-eval">github.com/linustalacko/zoonotic-honest-eval</a>.
 Generated June 2026.
 </div>
