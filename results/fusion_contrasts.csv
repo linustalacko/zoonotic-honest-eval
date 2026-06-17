@@ -1,0 +1,7 @@
+variant,vs,roc_auc_pt,pr_auc_pt,lift@50_pt
+genome_comp,effort_only,0.1183,-0.0339,-1.8785
+genome_comp,esm15B_xgboost,-0.0075,-0.023,-0.8539
+comp_effort,effort_only,0.1188,-0.0006,-1.1954
+comp_effort,esm15B_xgboost,-0.007,0.0102,-0.1708
+deconfound,effort_only,0.1752,0.1004,1.0246
+deconfound,esm15B_xgboost,0.0494,0.1112,2.0492

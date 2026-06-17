@@ -248,6 +248,23 @@ def embed_esm_big(model_name: str = "esm2_t48_15B_UR50D", max_proteins: int = 8)
             "n": int(len(esm)), "dim": int(esm.shape[1]), "cache": cache}
 
 
+@app.function(timeout=6 * 3600, gpu="a100-80gb", retries=3, image=gpu_image, volumes={DATA_MOUNT: volume})
+def embed_perprotein(model_name: str = "esm2_t33_650M_UR50D", max_proteins: int = 8) -> dict:
+    """Per-protein embeddings (the bag per virus, no pooling) for trainable-attention MIL."""
+    from zoonotic.logging_utils import setup_logging
+
+    setup_logging()
+    from features.embeddings import featurize_perprotein
+    from models.dataset import load_labels
+
+    cache = f"esm_{model_name}_top{max_proteins}_perprotein.parquet"
+    df = featurize_perprotein(load_labels(), model_name=model_name, cache_name=cache,
+                              max_proteins=max_proteins, commit_every=500, commit_cb=volume.commit)
+    volume.commit()
+    return {"model": model_name, "rows": int(len(df)),
+            "n_virus": int(df["virus_taxhash"].nunique()), "cache": cache}
+
+
 # --- Sharded embedding -------------------------------------------------------
 # Embedding is embarrassingly parallel over viruses. The 15B model is ~13 h on a
 # single A100 for the full cohort; splitting the virus list across N GPUs cuts

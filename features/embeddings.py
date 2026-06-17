@@ -116,6 +116,83 @@ def embed_virus(fasta_path: Path, model, alphabet, device,
     return np.concatenate([v.mean(axis=0), v.max(axis=0)])
 
 
+def embed_virus_proteins(fasta_path: Path, model, alphabet, device,
+                         max_proteins: int = MAX_PROTEINS_PER_VIRUS) -> np.ndarray | None:
+    """Per-protein ESM-2 embeddings (the *bag*, [n_proteins, dim]) — NO pooling.
+
+    This is what a trainable-attention MIL head needs: the individual proteins,
+    so the model can learn which one to weight instead of a fixed mean/max.
+    """
+    import torch
+
+    proteins = translate_orfs(fasta_path, max_proteins=max_proteins)
+    if not proteins:
+        return None
+    bc = alphabet.get_batch_converter()
+    repr_layer = model.num_layers
+    vecs = []
+    with torch.no_grad():
+        for i in range(0, len(proteins), 16):
+            chunk = [p[:1022] for p in proteins[i : i + 16]]
+            _, _, toks = bc([(f"p{j}", p) for j, p in enumerate(chunk)])
+            toks = toks.to(device)
+            out = model(toks, repr_layers=[repr_layer])["representations"][repr_layer]
+            for row, prot in enumerate(chunk):
+                length = len(prot)
+                vecs.append(out[row, 1 : 1 + length].mean(0).float().cpu().numpy())
+    return np.stack(vecs) if vecs else None
+
+
+def featurize_perprotein(viruses: pd.DataFrame, model_name: str = DEFAULT_ESM_MODEL, *,
+                         cache_name: str, max_proteins: int = MAX_PROTEINS_PER_VIRUS,
+                         commit_every: int = 0, commit_cb=None) -> pd.DataFrame:
+    """Long-format per-protein embedding table (one row per virus×protein).
+
+    Columns: virus_taxhash, prot_idx, e0..e{dim-1}. Resumable via a .partial file.
+    """
+    cache = FEATURES_CACHE / cache_name
+    if cache.exists():
+        log.info("per-protein embeddings cached: %s", cache)
+        return pd.read_parquet(cache)
+    partial = cache.with_suffix(".partial.parquet")
+    done: set = set()
+    rows: list = []
+    if partial.exists():
+        ex = pd.read_parquet(partial)
+        rows = ex.to_dict("records")
+        done = set(ex["virus_taxhash"].unique())
+        log.info("resuming per-protein embed from %d viruses", len(done))
+
+    model, alphabet, device = _load_esm(model_name)
+    FEATURES_CACHE.mkdir(parents=True, exist_ok=True)
+    for i, row in enumerate(viruses.itertuples(index=False), 1):
+        if row.virus_taxhash in done or not isinstance(row.virus_name, str):
+            continue
+        gpath = genome_path(row.virus_name)
+        if not gpath.exists() or gpath.stat().st_size == 0:
+            continue
+        bag = embed_virus_proteins(gpath, model, alphabet, device, max_proteins=max_proteins)
+        if bag is None:
+            continue
+        for pj in range(bag.shape[0]):
+            rows.append({"virus_taxhash": row.virus_taxhash, "prot_idx": pj,
+                         **{f"e{k}": float(bag[pj, k]) for k in range(bag.shape[1])}})
+        if i % 100 == 0:
+            log.info("  per-protein %d/%d (%d rows)", i, len(viruses), len(rows))
+        if commit_every and i % commit_every == 0:
+            pd.DataFrame(rows).to_parquet(partial)
+            if commit_cb:
+                commit_cb()
+
+    df = pd.DataFrame(rows)
+    df.to_parquet(cache)
+    partial.unlink(missing_ok=True)
+    if commit_cb:
+        commit_cb()
+    log.info("per-protein: %d rows (%d viruses)", len(df), df["virus_taxhash"].nunique())
+    return df
+
+
 def _rows_to_df(rows: dict[str, np.ndarray]) -> pd.DataFrame:
     if not rows:
         return pd.DataFrame()
